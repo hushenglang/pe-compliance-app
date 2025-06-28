@@ -95,4 +95,32 @@ class SfcNewsClient:
             return []
         except Exception as e:
             print(f"Unexpected error: {e}")
-            return [] 
+            return []
+
+    def fetch_news_content(self, url: str) -> Optional[str]:
+        """
+        Fetch news content from a given URL.
+        
+        Args:
+            url: The URL to fetch news content from
+        
+        Returns:
+            String containing the news content, or None if failed
+        """
+        try:
+            response = requests.get(url, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            
+            data = response.json()
+            
+            return data.get("html")
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Error making request to {url}: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON response from {url}: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error fetching content from {url}: {e}")
+            return None 

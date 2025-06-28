@@ -18,6 +18,11 @@ def main():
         print(f"Title: {news['title']}")
         print(f"Language: {news['lang']}")
         print(f"URL: {news['url']}")
+
+        # Fetch news content
+        content = client.fetch_news_content(news['url'])
+        print(f"Content: {content}")
+
         print("-" * 80)
             
 
