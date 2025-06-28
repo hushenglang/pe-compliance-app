@@ -2,11 +2,14 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Database URL - can be configured via environment variable
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("MySQL_DATABASE_URL")
 
-print("DATABASE_URL: ", DATABASE_URL)
 
 # Create SQLAlchemy engine
 engine = create_engine(

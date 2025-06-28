@@ -6,13 +6,19 @@ from datetime import datetime
 from config.database import SessionLocal
 from model.compliance_news import ComplianceNews
 from repo.compliance_news_repository import ComplianceNewsRepository
+import os
+from dotenv import load_dotenv
 
 def example_usage():
     """Demonstrate how to use the compliance news components"""
     
+    # Load environment variables from .env file
+    load_dotenv()
+    
     # Create tables (do this once when setting up the database)
     print("connect to database...")
-
+    DATABASE_URL = os.getenv("MySQL_DATABASE_URL")
+    print("DATABASE_URL: ", DATABASE_URL)
     
     # Create a database session
     db = SessionLocal()
