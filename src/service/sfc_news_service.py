@@ -144,7 +144,7 @@ class SfcNewsService:
         self.logger.info(f"Fetching today's SFC news for HK date: {today}")
         return self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
     
-    def get_existing_news_by_source(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
+    def get_existing_news(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
         """Get existing SFC news from database.
         
         Args:
@@ -167,6 +167,18 @@ class SfcNewsService:
             List of ComplianceNews objects
         """
         return self.repository.get_by_date_range(start_date, end_date)
+    
+    def get_news_last_7days(self) -> List[ComplianceNews]:
+        """Get SFC news from the last 7 days.
+        
+        Returns:
+            List of ComplianceNews objects from the last 7 days
+        """
+        end_date = get_current_datetime_hk()
+        start_date = end_date - timedelta(days=7)
+        
+        self.logger.info(f"Fetching SFC news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+        return self.get_news_by_date_range(start_date, end_date)
     
     def close(self):
         """Close database session if it was created by this service."""
