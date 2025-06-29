@@ -1,96 +1,97 @@
 """
-Example usage of the compliance news database components
+Example usage of the Financial News Crawl system.
+
+This module demonstrates how to use the various services in the system.
 """
 
-from datetime import datetime
-from config.database import SessionLocal
-from model.compliance_news import ComplianceNews
-from repo.compliance_news_repository import ComplianceNewsRepository
+import logging
 import os
-from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import asyncio
 
-def example_usage():
-    """Demonstrate how to use the compliance news components"""
+from service.sfc_news_service import SfcNewsService
+from service.agent_service import AgentService
+from util.date_util import get_current_datetime_hk
+
+
+def setup_logging():
+    """Setup basic logging configuration."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+
+
+def example_sfc_news_service():
+    """Example usage of SFC News Service."""
+    print("=" * 50)
+    print("SFC News Service Example")
+    print("=" * 50)
     
-    # Load environment variables from .env file
-    load_dotenv()
-    
-    # Create tables (do this once when setting up the database)
-    print("connect to database...")
-    DATABASE_URL = os.getenv("MySQL_DATABASE_URL")
-    print("DATABASE_URL: ", DATABASE_URL)
-    
-    # Create a database session
-    db = SessionLocal()
+    # Create service instance
+    service = SfcNewsService()
     
     try:
-        # Initialize the repository
-        repo = ComplianceNewsRepository(db)
+        # Fetch today's news
+        print("Fetching today's SFC news...")
+        news_items = service.fetch_and_persist_today_news()
+        print(f"Found and persisted {len(news_items)} news items")
         
-        repo.create(ComplianceNews(
-            source="test",
-            issue_date=datetime.now(),
-            title="test",
-            content="test",
-            content_url="test",
-            creation_user="hushenglang"
-        ))  
-
-        print(repo.get_by_source("test"))
+        # Display some news items
+        for i, news in enumerate(news_items[:3]):  # Show first 3 items
+            print(f"\n{i+1}. {news.title}")
+            print(f"   Date: {news.issue_date}")
+            print(f"   URL: {news.content_url}")
+            if news.content:
+                print(f"   Content preview: {news.content[:100]}...")
+        
+        # Fetch existing news
+        print("\nFetching existing SFC news from database...")
+        existing_news = service.get_existing_news_by_source(limit=5)
+        print(f"Found {len(existing_news)} existing news items")
         
     except Exception as e:
         print(f"Error: {e}")
-        db.rollback()
     finally:
-        db.close()
+        service.close()
 
-def example_sfc_news_service():
-    """Example usage of SFC News Service"""
-    from service.sfc_news_service import SfcNewsService
-    from datetime import datetime, timedelta
+
+def example_agent_service(system_prompt: str):
+    """Example usage of Agent Service."""
+    print("=" * 50)
+    print("Agent Service Example")
+    print("=" * 50)
     
-    print("\n=== SFC News Service Example ===")
+    # Create service instance
+    service = AgentService("financial_compliance_assistant", system_prompt)
+
+    # Test the agent service
+    print("Testing agent service...")
+    response = asyncio.run(service.chat("What is the capital of France?"))
+    print(f"Agent response: {response}")
+
+
+def main():
+    """Main function to run examples."""
+    setup_logging()
     
-    # Create service instance with context manager for automatic cleanup
-    with SfcNewsService() as service:
-        try:
-            # Example 1: Fetch today's news
-            print("\n1. Fetching today's SFC news...")
-            today_news = service.fetch_and_persist_today_news(creation_user="example_user")
-            print(f"Found and persisted {len(today_news)} news items for today")
-            
-            # Example 2: Fetch news for a specific date
-            print("\n2. Fetching SFC news for a specific date...")
-            specific_date = "2025-06-27"  # Example date
-            daily_news = service.fetch_and_persist_news_by_date(specific_date, creation_user="example_user")
-            print(f"Found and persisted {len(daily_news)} news items for {specific_date}")
-            
+    print("Financial News Crawl - Example Usage")
+    print("=" * 60)
     
-            
-            # Example 4: Get existing news from database
-            print("\n4. Retrieving existing SFC news from database...")
-            existing_news = service.get_existing_news_by_source(skip=0, limit=10)
-            print(f"Retrieved {len(existing_news)} existing SFC news items from database")
-            
-            # Display some details of the retrieved news
-            for i, news in enumerate(existing_news[:3], 1):  # Show first 3 items
-                print(f"  {i}. {news.title[:50]}... (Date: {news.issue_date})")
-            
-            # Example 5: Get news by date range from database
-            print("\n5. Retrieving news from database by date range...")
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=7)  # Last 7 days
-            date_range_news = service.get_news_by_date_range(start_dt, end_dt)
-            print(f"Retrieved {len(date_range_news)} news items from last 7 days")
-            
-        except Exception as e:
-            print(f"Error in SFC news service example: {e}")
+    # Run SFC News Service example
+    # example_sfc_news_service()
+    
+    # print("\n" + "=" * 60)
+    
+    # Run Agent Service example
+    system_prompt = """You are a specialized financial compliance assistant focused on Hong Kong SFC regulations. 
+    Provide accurate, concise responses about SFC rules, regulatory requirements, and compliance best practices. 
+    Use clear language and cite relevant regulations when applicable."""
+    example_agent_service(system_prompt)
+    
+    print("\n" + "=" * 60)
+    print("Examples completed!")
+
 
 if __name__ == "__main__":
-    # Run both examples
-    print("=== Running Basic Database Example ===")
-    # example_usage()
-    
-    print("\n" + "="*50)
-    print("=== Running SFC News Service Example ===")
-    example_sfc_news_service() 
+    main() 
