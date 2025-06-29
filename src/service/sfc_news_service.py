@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from client.sfc_news_client import SfcNewsClient
 from model.compliance_news import ComplianceNews
 from repo.compliance_news_repository import ComplianceNewsRepository
-from config.database import get_db
 from service.agent_service import AgentService
 from util.date_util import get_current_datetime_hk, get_hk_timezone
 from util.logging_util import get_logger
@@ -19,32 +18,21 @@ from constant.prompt_constants import FINANCIAL_COMPLIANCE_SYSTEM_PROMPT
 class SfcNewsService:
     """Service for managing SFC news operations."""
     
-    def __init__(self):
-        """Initialize the SFC news service."""
+    def __init__(self, db: Session):
+        """Initialize the SFC news service.
+        
+        Args:
+            db: Database session
+        """
         self.client = SfcNewsClient()
-        self._db = None
-        self._repository = None
+        self.db = db
+        self.repository = ComplianceNewsRepository(db)
         self.agent_service = AgentService("sfc_financial_compliance_assistant", FINANCIAL_COMPLIANCE_SYSTEM_PROMPT)
         
         # Configure detailed logging
         self.logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
         
         self.logger.info("[INIT] SfcNewsService initialized")
-    
-    @property
-    def db(self) -> Session:
-        """Get database session."""
-        if self._db is None:
-            self.logger.debug("[DB] Creating new database session")
-            self._db = next(get_db())
-        return self._db
-    
-    @property
-    def repository(self) -> ComplianceNewsRepository:
-        """Get repository instance."""
-        if self._repository is None:
-            self._repository = ComplianceNewsRepository(self.db)
-        return self._repository
     
     def fetch_and_persist_news_by_date(self, date: str, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
         """Fetch SFC news for a specific date and persist to database.
@@ -166,7 +154,7 @@ class SfcNewsService:
     
     def get_news_last_7days(self) -> List[ComplianceNews]:
         """Get SFC news from the last 7 days.
-        
+            
         Returns:
             List of ComplianceNews objects from the last 7 days
         """
@@ -174,17 +162,4 @@ class SfcNewsService:
         start_date = end_date - timedelta(days=7)
         
         self.logger.info(f"Fetching SFC news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-        return self.get_news_by_date_range(start_date, end_date)
-    
-    def close(self):
-        """Close database session if it was created by this service."""
-        if self._db and hasattr(self._db, 'close'):
-            self._db.close()
-    
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.close() 
+        return self.get_news_by_date_range(start_date, end_date) 

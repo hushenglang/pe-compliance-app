@@ -1,7 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, func
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from config.database import Base
 
 class ComplianceNews(Base):
     """SQLAlchemy model for compliance_news table"""
