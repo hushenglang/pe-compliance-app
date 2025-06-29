@@ -1,6 +1,20 @@
+from fastapi import FastAPI
+from router.news_router import router as news_router
+from router.health_router import router as health_router
 from client.sfc_news_client import SfcNewsClient
 from util.date_util import get_current_date_hk
 from util.logging_util import setup_logging, get_logger
+
+# Create FastAPI app
+app = FastAPI(
+    title="Financial Compliance News API",
+    description="API for fetching and managing financial compliance news",
+    version="0.1.0"
+)
+
+# Include routers
+app.include_router(news_router)
+app.include_router(health_router)
 
 def main():
     """Main function to run the news data fetching."""
@@ -45,4 +59,5 @@ def main():
             
 
 if __name__ == "__main__":
-    main()
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

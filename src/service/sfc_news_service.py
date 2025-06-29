@@ -19,21 +19,17 @@ from constant.prompt_constants import FINANCIAL_COMPLIANCE_SYSTEM_PROMPT
 class SfcNewsService:
     """Service for managing SFC news operations."""
     
-    def __init__(self, db: Optional[Session] = None):
-        """Initialize the SFC news service.
-        
-        Args:
-            db: Database session. If None, will create a new session.
-        """
+    def __init__(self):
+        """Initialize the SFC news service."""
         self.client = SfcNewsClient()
-        self._db = db
+        self._db = None
         self._repository = None
         self.agent_service = AgentService("sfc_financial_compliance_assistant", FINANCIAL_COMPLIANCE_SYSTEM_PROMPT)
         
         # Configure detailed logging
         self.logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
         
-        self.logger.info(f"[INIT] SfcNewsService initialized with db_provided={db is not None}")
+        self.logger.info("[INIT] SfcNewsService initialized")
     
     @property
     def db(self) -> Session:
