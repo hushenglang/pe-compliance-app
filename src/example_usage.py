@@ -12,14 +12,7 @@ import asyncio
 from service.sfc_news_service import SfcNewsService
 from service.agent_service import AgentService
 from util.date_util import get_current_datetime_hk
-
-
-def setup_logging():
-    """Setup basic logging configuration."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+from util.logging_util import setup_logging
 
 
 def example_sfc_news_service():
@@ -34,7 +27,7 @@ def example_sfc_news_service():
     try:
         # Fetch today's news
         print("Fetching today's SFC news...")
-        news_items = service.fetch_and_persist_today_news()
+        news_items = service.fetch_and_persist_news_by_date("2025-06-27")
         print(f"Found and persisted {len(news_items)} news items")
         
         # Display some news items
@@ -79,7 +72,7 @@ def main():
     print("=" * 60)
     
     # Run SFC News Service example
-    # example_sfc_news_service()
+    example_sfc_news_service()
     
     # print("\n" + "=" * 60)
     
@@ -87,7 +80,7 @@ def main():
     system_prompt = """You are a specialized financial compliance assistant focused on Hong Kong SFC regulations. 
     Provide accurate, concise responses about SFC rules, regulatory requirements, and compliance best practices. 
     Use clear language and cite relevant regulations when applicable."""
-    example_agent_service(system_prompt)
+    # example_agent_service(system_prompt)
     
     print("\n" + "=" * 60)
     print("Examples completed!")

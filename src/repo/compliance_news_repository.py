@@ -2,19 +2,28 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from model.compliance_news import ComplianceNews
+from util.logging_util import get_logger
 
 class ComplianceNewsRepository:
     """Repository class for compliance news operations"""
     
     def __init__(self, db: Session):
         self.db = db
+        self.logger = get_logger(__name__)
 
     def create(self, compliance_news: ComplianceNews) -> ComplianceNews:
         """Create a new compliance news record"""
-        self.db.add(compliance_news)
-        self.db.commit()
-        self.db.refresh(compliance_news)
-        return compliance_news
+        try:
+            self.logger.debug(f"Creating new compliance news record: {compliance_news.title}")
+            self.db.add(compliance_news)
+            self.db.commit()
+            self.db.refresh(compliance_news)
+            self.logger.info(f"Successfully created compliance news record with ID: {compliance_news.id}")
+            return compliance_news
+        except Exception as e:
+            self.logger.error(f"Failed to create compliance news record: {e}")
+            self.db.rollback()
+            raise
 
     def _get_by_id(self, news_id: int) -> Optional[ComplianceNews]:
         """Get compliance news by ID"""
@@ -22,16 +31,30 @@ class ComplianceNewsRepository:
 
     def get_by_source(self, source: str, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
         """Get compliance news by source"""
-        return self.db.query(ComplianceNews).filter(
-            ComplianceNews.source == source
-        ).offset(skip).limit(limit).all()
+        try:
+            self.logger.debug(f"Fetching compliance news by source: {source}, skip: {skip}, limit: {limit}")
+            results = self.db.query(ComplianceNews).filter(
+                ComplianceNews.source == source
+            ).offset(skip).limit(limit).all()
+            self.logger.info(f"Found {len(results)} compliance news records for source: {source}")
+            return results
+        except Exception as e:
+            self.logger.error(f"Failed to fetch compliance news by source {source}: {e}")
+            raise
 
     def get_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ComplianceNews]:
         """Get compliance news within a date range"""
-        return self.db.query(ComplianceNews).filter(
-            ComplianceNews.issue_date >= start_date,
-            ComplianceNews.issue_date <= end_date
-        ).all()
+        try:
+            self.logger.debug(f"Fetching compliance news by date range: {start_date} to {end_date}")
+            results = self.db.query(ComplianceNews).filter(
+                ComplianceNews.issue_date >= start_date,
+                ComplianceNews.issue_date <= end_date
+            ).all()
+            self.logger.info(f"Found {len(results)} compliance news records in date range")
+            return results
+        except Exception as e:
+            self.logger.error(f"Failed to fetch compliance news by date range: {e}")
+            raise
 
     def update(self, compliance_news: ComplianceNews) -> Optional[ComplianceNews]:
         """Update compliance news record"""

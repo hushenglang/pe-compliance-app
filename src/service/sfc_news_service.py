@@ -1,5 +1,6 @@
 """SFC News Service for fetching and persisting SFC compliance news."""
 
+import asyncio
 import logging
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -9,7 +10,10 @@ from client.sfc_news_client import SfcNewsClient
 from model.compliance_news import ComplianceNews
 from repo.compliance_news_repository import ComplianceNewsRepository
 from config.database import get_db
+from service.agent_service import AgentService
 from util.date_util import get_current_datetime_hk, get_hk_timezone
+from util.logging_util import get_logger
+from constant.prompt_constants import FINANCIAL_COMPLIANCE_SYSTEM_PROMPT
 
 
 class SfcNewsService:
@@ -24,12 +28,18 @@ class SfcNewsService:
         self.client = SfcNewsClient()
         self._db = db
         self._repository = None
-        self.logger = logging.getLogger(__name__)
+        self.agent_service = AgentService("sfc_financial_compliance_assistant", FINANCIAL_COMPLIANCE_SYSTEM_PROMPT)
+        
+        # Configure detailed logging
+        self.logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
+        
+        self.logger.info(f"[INIT] SfcNewsService initialized with db_provided={db is not None}")
     
     @property
     def db(self) -> Session:
         """Get database session."""
         if self._db is None:
+            self.logger.debug("[DB] Creating new database session")
             self._db = next(get_db())
         return self._db
     
@@ -40,12 +50,13 @@ class SfcNewsService:
             self._repository = ComplianceNewsRepository(self.db)
         return self._repository
     
-    def fetch_and_persist_news_by_date(self, date: str, creation_user: str = "system") -> List[ComplianceNews]:
+    def fetch_and_persist_news_by_date(self, date: str, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
         """Fetch SFC news for a specific date and persist to database.
         
         Args:
             date: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
             creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
             
         Returns:
             List of persisted ComplianceNews objects
@@ -85,12 +96,17 @@ class SfcNewsService:
                         except ValueError as e:
                             self.logger.warning(f"Failed to parse issue date: {item.get('issueDate')}, error: {e}")
                     
+                    llm_summary = None
+                    if llm_enabled and content is not None:
+                        llm_summary = asyncio.run(self.agent_service.chat(content))
+
                     # Create ComplianceNews object
                     compliance_news = ComplianceNews(
                         source="SFC",
                         issue_date=issue_date,
                         title=item.get("title", ""),
                         content=content,
+                        llm_summary=llm_summary,
                         content_url=item.get("url"),
                         creation_user=creation_user
                     )
@@ -114,18 +130,19 @@ class SfcNewsService:
             raise
     
     
-    def fetch_and_persist_today_news(self, creation_user: str = "system") -> List[ComplianceNews]:
+    def fetch_and_persist_today_news(self, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
         """Fetch SFC news for today (Hong Kong timezone) and persist to database.
         
         Args:
             creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
             
         Returns:
             List of persisted ComplianceNews objects
         """
         today = get_current_datetime_hk().strftime("%Y-%m-%d")
         self.logger.info(f"Fetching today's SFC news for HK date: {today}")
-        return self.fetch_and_persist_news_by_date(today, creation_user)
+        return self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
     
     def get_existing_news_by_source(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
         """Get existing SFC news from database.
