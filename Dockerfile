@@ -12,7 +12,7 @@ ENV OPENROUTER_MODEL=openai/gpt-4o-mini
 ENV OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
 # Add src directory to Python path for module imports
-ENV PYTHONPATH="/app/src:$PYTHONPATH"
+ENV PYTHONPATH="/app/src"
 
 # Set work directory
 WORKDIR /app
