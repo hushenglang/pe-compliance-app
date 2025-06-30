@@ -1,11 +1,9 @@
 """Agent Service using OpenAI Agents SDK."""
 
 import logging
-import os
 import time
 import httpx
-from openai import OpenAI, AsyncOpenAI
-from typing import Optional
+from openai import AsyncOpenAI
 from agents import Agent, Runner, OpenAIChatCompletionsModel
 from util.logging_util import get_logger
 from config.settings import settings

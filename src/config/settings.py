@@ -1,7 +1,6 @@
 """Centralized configuration management for the application."""
 
 import os
-from typing import Optional
 
 
 class Settings:
