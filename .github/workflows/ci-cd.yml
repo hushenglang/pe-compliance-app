@@ -50,14 +50,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Debug - Check secrets availability
-      run: |
-        echo "Checking secret availability..."
-        echo "DOCKER_HUB_USERNAME is set: ${{ secrets.DOCKER_HUB_USERNAME != '' }}"
-        echo "DOCKER_HUB_REPOSITORY is set: ${{ secrets.DOCKER_HUB_REPOSITORY != '' }}"
-        echo "DOCKER_HUB_TOKEN is set: ${{ secrets.DOCKER_HUB_TOKEN != '' }}"
-        echo "Environment variable DOCKER_HUB_REPOSITORY: '${DOCKER_HUB_REPOSITORY}'"
-
     - name: Generate image metadata
       id: meta
       run: |
