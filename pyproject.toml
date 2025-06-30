@@ -1,5 +1,5 @@
 [project]
-name = "financial-news-crawl"
+name = "pe_compliance_news"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
