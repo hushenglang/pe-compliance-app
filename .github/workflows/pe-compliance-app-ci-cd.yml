@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: PE Compliance App CI/CD Pipeline
 
 on:
   push:
@@ -12,7 +12,7 @@ env:
   DOCKER_HUB_REPOSITORY: ${{ secrets.DOCKER_HUB_REPOSITORY }}
 
 jobs:
-  test:
+  code-quality:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
       continue-on-error: true
 
   build-and-push:
-    needs: test
+    needs: code-quality
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     outputs:
