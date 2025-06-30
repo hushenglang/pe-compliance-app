@@ -15,3 +15,10 @@ dependencies = [
     "fastapi>=0.115.14",
     "uvicorn>=0.28.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "pytest>=7.0.0",
+]
