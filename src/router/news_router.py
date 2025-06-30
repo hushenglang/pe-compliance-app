@@ -1,12 +1,11 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from typing import List, Dict
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import logging
 
 from service.sfc_news_service import SfcNewsService
-from model.compliance_news import ComplianceNews
 from config.database import get_db
 from util.logging_util import get_logger
 
@@ -17,11 +16,11 @@ logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
 class ComplianceNewsResponse(BaseModel):
     id: int
     source: str
-    issue_date: datetime = None
+    issue_date: Optional[datetime] = None
     title: str
-    content: str = None
-    content_url: str = None
-    llm_summary: str = None
+    content: Optional[str] = None
+    content_url: Optional[str] = None
+    llm_summary: Optional[str] = None
     creation_date: datetime
     creation_user: str
 

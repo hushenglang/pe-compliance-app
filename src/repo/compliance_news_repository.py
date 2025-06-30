@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, cast
 from datetime import datetime
 from model.compliance_news import ComplianceNews
 from util.logging_util import get_logger
@@ -58,7 +58,9 @@ class ComplianceNewsRepository:
 
     def update(self, compliance_news: ComplianceNews) -> Optional[ComplianceNews]:
         """Update compliance news record"""
-        db_news = self._get_by_id(compliance_news.id)
+        if compliance_news.id is None:
+            return None
+        db_news = self._get_by_id(cast(int, compliance_news.id))
         if db_news:
             db_news.source = compliance_news.source
             db_news.issue_date = compliance_news.issue_date
@@ -73,7 +75,9 @@ class ComplianceNewsRepository:
 
     def delete(self, compliance_news: ComplianceNews) -> bool:
         """Delete compliance news record"""
-        db_news = self._get_by_id(compliance_news.id)
+        if compliance_news.id is None:
+            return False
+        db_news = self._get_by_id(cast(int, compliance_news.id))
         if db_news:
             self.db.delete(db_news)
             self.db.commit()
