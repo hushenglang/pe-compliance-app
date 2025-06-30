@@ -31,19 +31,77 @@ A comprehensive application for financial compliance news crawling and AI-powere
 
 2. **Environment Variables**:
    Create a `.env` file with the following variables:
-   ```
+   ```bash
+   # OpenRouter Configuration (used instead of direct OpenAI)
+   OPENROUTER_API_KEY=your_openrouter_api_key_here
+   OPENROUTER_MODEL=openai/gpt-4o-mini
+   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+   
    # Database Configuration
    MySQL_DATABASE_URL=mysql+pymysql://username:password@host:port/database_name
    
-   # OpenRouter API Key (for Agent Service)
-   OPENROUTER_API_KEY=your_openrouter_api_key_here
+   # Optional: Application Environment
+   APP_ENV=production
+   LOG_LEVEL=INFO
    ```
+   
+   **Environment Variable Loading (Production-Ready)**:
+   - **Development**: Automatically loads `.env` file when `APP_ENV=development` (default)
+   - **Production**: Only uses environment variables from container runtime (no `.env` file loading)
+   - **Docker**: Environment variables passed via `-e` flag or `--env-file` override all defaults
+   - **Precedence**: Docker env vars > .env file (dev only) > Dockerfile defaults
 
 3. **Database Setup**:
    ```bash
    # Run the SQL script to create necessary tables
    mysql -u username -p database_name < doc/table_creation.sql
    ```
+
+## Docker Deployment
+
+### Option 1: Using Docker Compose (Recommended for Development)
+```bash
+# For development with .env file loading (default)
+docker-compose up -d
+
+# For production mode (environment variables only)
+APP_ENV=production docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Option 2: Manual Docker Commands
+```bash
+# Build the image
+./build.sh
+
+# Run with .env file
+docker run -d --name pe-compliance-app -p 8000:8000 --env-file .env pe-compliance-app:latest
+
+# Or run with individual environment variables (PRODUCTION)
+docker run -d --name pe-compliance-app -p 8000:8000 \
+  -e APP_ENV="production" \
+  -e OPENROUTER_API_KEY="your_api_key" \
+  -e MySQL_DATABASE_URL="your_db_url" \
+  pe-compliance-app:latest
+```
+
+### Environment Variable Management in Docker
+
+1. **Development**: Use `--env-file .env` for local development with `APP_ENV=development`
+2. **Production**: Pass environment variables directly using `-e` flags with `APP_ENV=production`
+3. **CI/CD**: Use secrets management (e.g., GitHub Secrets, AWS Secrets Manager)
+
+**Security Best Practices**:
+- ✅ `.env` files are **only loaded in development** (when `APP_ENV=development`)
+- ✅ **Production mode** (`APP_ENV=production`) **never** loads `.env` files
+- ✅ Never commit `.env` files to version control
+- ✅ Use Docker secrets or orchestration platform secrets for production
+- ✅ Rotate API keys regularly and validate environment variables on startup
 
 ## Usage
 

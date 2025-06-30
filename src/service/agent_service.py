@@ -8,7 +8,7 @@ from openai import OpenAI, AsyncOpenAI
 from typing import Optional
 from agents import Agent, Runner, OpenAIChatCompletionsModel
 from util.logging_util import get_logger
-from dotenv import load_dotenv
+from config.settings import settings
 
 # Configure logging
 logger = get_logger(__name__)
@@ -24,15 +24,14 @@ class AgentService:
             agent_name: The name of the agent
             system_prompt: The pre-defined system prompt for the agent
         """
-        # Load environment variables from .env file
-        load_dotenv()
         self.agent_name = agent_name
         self.system_prompt = system_prompt
-        self.model = os.getenv("OPENROUTER_MODEL")
-        self.base_url = os.getenv("OPENROUTER_BASE_URL")
-        self.open_router_api_key = os.getenv("OPENROUTER_API_KEY")
+        # Use centralized settings instead of direct os.getenv()
+        self.model = settings.openrouter_model
+        self.base_url = settings.openrouter_base_url
+        self.open_router_api_key = settings.openrouter_api_key
         
-        logger.info(f"Initializing AgentService for '{agent_name}'")
+        logger.info(f"Initializing AgentService for '{agent_name}' (env: {settings.app_env})")
         logger.debug(f"Model: {self.model}")
         logger.debug(f"Base URL: {self.base_url}")
         logger.debug(f"System prompt length: {len(system_prompt)} characters")

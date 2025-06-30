@@ -1,20 +1,15 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
-from dotenv import load_dotenv
+from config.settings import settings
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Database URL - can be configured via environment variable
-DATABASE_URL = os.getenv("MySQL_DATABASE_URL")
-
+# Use centralized settings for database configuration
+DATABASE_URL = settings.database_url
 
 # Create SQLAlchemy engine
 engine = create_engine(
     DATABASE_URL,
-    echo=True,  # Set to False in production
+    echo=settings.database_echo_enabled,  # Enable SQL logging in development only
     pool_pre_ping=True,  # Verify connections before use
     pool_recycle=300  # Recycle connections every 5 minutes
 )
