@@ -68,6 +68,7 @@ def setup_logging(
     console_handler.setLevel(level)
     
     # Set format based on style
+    formatter: logging.Formatter
     if enable_json_logging or format_style == "json":
         formatter = JSONFormatter()
     elif format_style == "detailed":

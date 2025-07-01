@@ -5,7 +5,6 @@ from router.health_router import router as health_router
 from util.logging_util import setup_logging, get_logger
 from config.settings import settings
 import uvicorn
-import os
 
 # Configure logging based on environment
 log_level_mapping = {
