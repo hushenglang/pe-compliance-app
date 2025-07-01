@@ -191,13 +191,14 @@ class SfcNewsService:
             query_params = parse_qs(parsed_url.query)
             
             # Get refNo parameter
-            ref_no = query_params.get('refNo')
-            if not ref_no:
+            ref_no_list = query_params.get('refNo')
+            if not ref_no_list:
                 raise ValueError("Missing 'refNo' parameter in URL")
-            ref_no = ref_no[0]  # parse_qs returns lists
+            ref_no = ref_no_list[0]  # parse_qs returns lists
             
             # Get lang parameter (default to 'TC' if not present)
-            lang = query_params.get('lang', ['TC'])[0]
+            lang_list = query_params.get('lang')
+            lang = lang_list[0] if lang_list else 'TC'
             
             # Construct the new gateway URL
             gateway_url = f"{expected_base}/gateway/{lang}/news-and-announcements/news/doc?refNo={ref_no}"

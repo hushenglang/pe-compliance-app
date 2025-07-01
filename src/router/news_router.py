@@ -152,7 +152,7 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
             source = sfc_news_item.source
             issue_date = sfc_news_item.issue_date.strftime("%Y-%m-%d")
             title = sfc_news_item.title
-            content_url = sfc_news_service.convert_api_url_to_news_orignal_url(sfc_news_item.content_url)
+            content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(sfc_news_item.content_url)) if sfc_news_item.content_url else ""
             llm_summary = sfc_news_item.llm_summary
             html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
             html_email = html_email + f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
