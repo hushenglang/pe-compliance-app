@@ -152,17 +152,17 @@ jobs:
           
           # Wait for container to be healthy
           echo "Waiting for container to be healthy..."
-          for i in {1..5}; do
+          for i in {1..10}; do
             if [ "$(docker inspect --format='{{.State.Health.Status}}' ${CONTAINER_NAME})" = "healthy" ]; then
               echo "Container is healthy!"
               break
             fi
-            if [ $i -eq 5 ]; then
+            if [ $i -eq 10 ]; then
               echo "Container failed to become healthy"
               docker logs ${CONTAINER_NAME}
               exit 1
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting... ($i/10)"
             sleep 10
           done
           
@@ -187,4 +187,5 @@ jobs:
           echo "Application should be available at: http://${{ secrets.ECS_HOST }}:8000/docs"
         else
           echo "❌ Deployment failed!"
-          exit 1 
+          exit 1
+        fi 
