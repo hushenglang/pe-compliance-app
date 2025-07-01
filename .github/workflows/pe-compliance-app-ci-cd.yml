@@ -152,12 +152,12 @@ jobs:
           
           # Wait for container to be healthy
           echo "Waiting for container to be healthy..."
-          for i in {1..30}; do
+          for i in {1..5}; do
             if [ "$(docker inspect --format='{{.State.Health.Status}}' ${CONTAINER_NAME})" = "healthy" ]; then
               echo "Container is healthy!"
               break
             fi
-            if [ $i -eq 30 ]; then
+            if [ $i -eq 5 ]; then
               echo "Container failed to become healthy"
               docker logs ${CONTAINER_NAME}
               exit 1
