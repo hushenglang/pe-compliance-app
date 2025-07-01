@@ -1,6 +1,5 @@
 """SFC News Service for fetching and persisting SFC compliance news."""
 
-import asyncio
 import logging
 from typing import List
 from datetime import datetime, timedelta
@@ -34,7 +33,7 @@ class SfcNewsService:
         
         self.logger.info("[INIT] SfcNewsService initialized")
     
-    def fetch_and_persist_news_by_date(self, date: str, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
+    async def fetch_and_persist_news_by_date(self, date: str, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
         """Fetch SFC news for a specific date and persist to database.
         
         Args:
@@ -82,7 +81,7 @@ class SfcNewsService:
                     
                     llm_summary = None
                     if llm_enabled and content is not None:
-                        llm_summary = asyncio.run(self.agent_service.chat(content))
+                        llm_summary = await self.agent_service.chat(content)
 
                     # Create ComplianceNews object
                     compliance_news = ComplianceNews(
@@ -114,7 +113,7 @@ class SfcNewsService:
             raise
     
     
-    def fetch_and_persist_today_news(self, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
+    async def fetch_and_persist_today_news(self, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
         """Fetch SFC news for today (Hong Kong timezone) and persist to database.
         
         Args:
@@ -126,7 +125,7 @@ class SfcNewsService:
         """
         today = get_current_datetime_hk().strftime("%Y-%m-%d")
         self.logger.info(f"Fetching today's SFC news for HK date: {today}")
-        return self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
+        return await self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
     
     def get_existing_news(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
         """Get existing SFC news from database.

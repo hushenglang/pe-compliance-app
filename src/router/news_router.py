@@ -57,7 +57,7 @@ async def fetch_and_persist_today_news(
     try:
         # Fetch and persist today's news
         logger.info("[POST /today] Calling SfcNewsService.fetch_and_persist_today_news")
-        persisted_news = sfc_news_service.fetch_and_persist_today_news(
+        persisted_news = await sfc_news_service.fetch_and_persist_today_news(
             creation_user=user,
             llm_enabled=llm_enabled
         )
@@ -101,7 +101,7 @@ async def fetch_and_persist_news_by_date(
     try:
         # Fetch and persist news for the specified date
         logger.info(f"[POST /date/{date}] Calling SfcNewsService.fetch_and_persist_news_by_date")
-        persisted_news = sfc_news_service.fetch_and_persist_news_by_date(
+        persisted_news = await sfc_news_service.fetch_and_persist_news_by_date(
             date=date,
             creation_user=user,
             llm_enabled=llm_enabled
