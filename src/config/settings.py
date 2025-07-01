@@ -82,6 +82,16 @@ class Settings:
         return os.getenv("LOG_LEVEL", "INFO").upper()
     
     @property
+    def log_to_file(self) -> bool:
+        """Check if logging to file is enabled."""
+        return os.getenv("LOG_TO_FILE", "false").lower() == "true"
+    
+    @property
+    def log_file_path(self) -> str:
+        """Get log file path from environment."""
+        return os.getenv("LOG_FILE_PATH", "logs/app.log")
+    
+    @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.app_env in ("production", "prod")

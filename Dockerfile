@@ -8,6 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Application environment variables with defaults
 ENV APP_ENV=production
 ENV LOG_LEVEL=INFO
+ENV LOG_TO_FILE=true
+ENV LOG_FILE_PATH=logs/app.log
 ENV OPENROUTER_MODEL=openai/gpt-4o-mini
 ENV OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
