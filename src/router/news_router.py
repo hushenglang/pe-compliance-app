@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import logging
+import markdown2
 
 from service.sfc_news_service import SfcNewsService
 from config.database import get_db
@@ -132,4 +133,33 @@ async def get_last_7days_news(db: Session = Depends(get_db)):
         
     except Exception as e:
         logger.error(f"[GET /last7days] Failed to fetch news: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
+
+@router.get("/html-email/last7days", response_model=str)
+async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
+    """
+    Get SFC news from the last 7 days, convert to html email format.
+    """
+    logger.info("[GET /html-email/last7days] Starting request to get last 7 days news")
+    
+    sfc_news_service = SfcNewsService(db)
+    
+    try:
+        logger.info("[GET /html-email/last7days] Calling SfcNewsService.get_news_last_7days")
+        news_items = sfc_news_service.get_news_last_7days()
+        html_email = ""
+        for news_item in news_items:
+            source = news_item.source
+            issue_date = news_item.issue_date.strftime("%Y-%m-%d")
+            title = news_item.title
+            content_url = news_item.content_url
+            llm_summary = news_item.llm_summary
+            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
+            html_email = html_email + f"""<p><b>{source} - <a href="{content_url}">{title}</a></b></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
+
+        logger.info(f"[GET /html-email/last7days] Successfully retrieved {len(news_items)} news items from last 7 days")
+        return html_email
+        
+    except Exception as e:
+        logger.error(f"[GET /html-email/last7days] Failed to fetch news: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
