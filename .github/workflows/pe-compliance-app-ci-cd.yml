@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
+      image-tag: ${{ steps.meta.outputs.image-tag }}
       image-digest: ${{ steps.build.outputs.digest }}
     
     steps:
@@ -93,98 +93,98 @@ jobs:
         trivy image --exit-code 0 --severity HIGH,CRITICAL ${{ steps.meta.outputs.full-image }}
       continue-on-error: true
 
-  # deploy:
-  #   needs: build-and-push
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
-  #   steps:
-  #   - uses: actions/checkout@v4
+    steps:
+    - uses: actions/checkout@v4
     
-  #   - name: Deploy to ECS
-  #     uses: appleboy/ssh-action@v1.0.3
-  #     with:
-  #       host: ${{ secrets.ECS_HOST }}
-  #       username: ${{ secrets.ECS_USERNAME }}
-  #       key: ${{ secrets.ECS_SSH_KEY }}
-  #       port: ${{ secrets.ECS_PORT || 22 }}
-  #       script: |
-  #         # Set variables
-  #         IMAGE_NAME="${{ env.IMAGE_NAME }}"
-  #         CONTAINER_NAME="${IMAGE_NAME}-container"
-  #         NEW_IMAGE="${{ needs.build-and-push.outputs.image-tag }}"
-  #         FULL_IMAGE="${{ env.DOCKER_HUB_REPOSITORY }}:latest"
+    - name: Deploy to ECS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.ECS_HOST }}
+        username: ${{ secrets.ECS_USERNAME }}
+        key: ${{ secrets.ECS_SSH_KEY }}
+        port: ${{ secrets.ECS_PORT || 22 }}
+        script: |
+          # Set variables
+          IMAGE_NAME="${{ env.IMAGE_NAME }}"
+          CONTAINER_NAME="${IMAGE_NAME}-container"
+          NEW_IMAGE="${{ needs.build-and-push.outputs.image-tag }}"
+          FULL_IMAGE="${{ env.DOCKER_HUB_REPOSITORY }}:latest"
           
-  #         # Create deployment directory if it doesn't exist
-  #         mkdir -p ~/deployments/${IMAGE_NAME}
-  #         cd ~/deployments/${IMAGE_NAME}
+          # Create deployment directory if it doesn't exist
+          mkdir -p ~/deployments/${IMAGE_NAME}
+          cd ~/deployments/${IMAGE_NAME}
           
-  #         # Login to Docker Hub
-  #         echo "Logging in to Docker Hub..."
-  #         docker login --username=${{ secrets.DOCKER_HUB_USERNAME }} --password=${{ secrets.DOCKER_HUB_TOKEN }}
+          # Login to Docker Hub
+          echo "Logging in to Docker Hub..."
+          docker login --username=${{ secrets.DOCKER_HUB_USERNAME }} --password=${{ secrets.DOCKER_HUB_TOKEN }}
           
-  #         # Pull the latest image
-  #         echo "Pulling latest image: ${FULL_IMAGE}"
-  #         docker pull ${FULL_IMAGE}
+          # Pull the latest image
+          echo "Pulling latest image: ${FULL_IMAGE}"
+          docker pull ${FULL_IMAGE}
           
-  #         # Stop and remove existing container if it exists
-  #         echo "Stopping existing container..."
-  #         docker stop ${CONTAINER_NAME} 2>/dev/null || true
-  #         docker rm ${CONTAINER_NAME} 2>/dev/null || true
+          # Stop and remove existing container if it exists
+          echo "Stopping existing container..."
+          docker stop ${CONTAINER_NAME} 2>/dev/null || true
+          docker rm ${CONTAINER_NAME} 2>/dev/null || true
           
-  #         # Remove old images (keep last 3)
-  #         echo "Cleaning up old images..."
-  #         docker images "${{ env.DOCKER_HUB_REPOSITORY }}" --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}" | tail -n +2 | head -n -3 | awk '{print $3}' | xargs -r docker rmi 2>/dev/null || true
+          # Remove old images (keep last 3)
+          echo "Cleaning up old images..."
+          docker images "${{ env.DOCKER_HUB_REPOSITORY }}" --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}" | tail -n +2 | head -n -3 | awk '{print $3}' | xargs -r docker rmi 2>/dev/null || true
           
-  #         # Create and start new container
-  #         echo "Starting new container..."
-  #         docker run -d \
-  #           --name ${CONTAINER_NAME} \
-  #           --restart unless-stopped \
-  #           -p 8000:8000 \
-  #           --env-file .env \
-  #           --health-cmd="curl -f http://localhost:8000/health || exit 1" \
-  #           --health-interval=30s \
-  #           --health-timeout=10s \
-  #           --health-start-period=40s \
-  #           --health-retries=3 \
-  #           ${FULL_IMAGE}
+          # Create and start new container
+          echo "Starting new container..."
+          docker run -d \
+            --name ${CONTAINER_NAME} \
+            --restart unless-stopped \
+            -p 8000:8000 \
+            --env-file .env \
+            --health-cmd="curl -f http://localhost:8000/api/health || exit 1" \
+            --health-interval=30s \
+            --health-timeout=10s \
+            --health-start-period=40s \
+            --health-retries=3 \
+            ${FULL_IMAGE}
           
-  #         # Wait for container to be healthy
-  #         echo "Waiting for container to be healthy..."
-  #         for i in {1..30}; do
-  #           if [ "$(docker inspect --format='{{.State.Health.Status}}' ${CONTAINER_NAME})" = "healthy" ]; then
-  #             echo "Container is healthy!"
-  #             break
-  #           fi
-  #           if [ $i -eq 30 ]; then
-  #             echo "Container failed to become healthy"
-  #             docker logs ${CONTAINER_NAME}
-  #             exit 1
-  #           fi
-  #           echo "Waiting... ($i/30)"
-  #           sleep 10
-  #         done
+          # Wait for container to be healthy
+          echo "Waiting for container to be healthy..."
+          for i in {1..30}; do
+            if [ "$(docker inspect --format='{{.State.Health.Status}}' ${CONTAINER_NAME})" = "healthy" ]; then
+              echo "Container is healthy!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "Container failed to become healthy"
+              docker logs ${CONTAINER_NAME}
+              exit 1
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 10
+          done
           
-  #         # Show deployment status
-  #         echo "Deployment completed successfully!"
-  #         echo "Container status:"
-  #         docker ps --filter name=${CONTAINER_NAME}
-  #         echo "Application logs:"
-  #         docker logs --tail 20 ${CONTAINER_NAME}
+          # Show deployment status
+          echo "Deployment completed successfully!"
+          echo "Container status:"
+          docker ps --filter name=${CONTAINER_NAME}
+          echo "Application logs:"
+          docker logs --tail 20 ${CONTAINER_NAME}
 
-  # notify:
-  #   needs: [build-and-push, deploy]
-  #   runs-on: ubuntu-latest
-  #   if: always() && github.ref == 'refs/heads/main'
+  notify:
+    needs: [build-and-push, deploy]
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main'
     
-  #   steps:
-  #   - name: Notify deployment status
-  #     run: |
-  #       if [ "${{ needs.deploy.result }}" = "success" ]; then
-  #         echo "✅ Deployment successful!"
-  #         echo "Image: ${{ needs.build-and-push.outputs.image-tag }}"
-  #         echo "Application should be available at: http://${{ secrets.ECS_HOST }}:8000"
-  #       else
-  #         echo "❌ Deployment failed!"
-  #         exit 1 
+    steps:
+    - name: Notify deployment status
+      run: |
+        if [ "${{ needs.deploy.result }}" = "success" ]; then
+          echo "✅ Deployment successful!"
+          echo "Image: ${{ needs.build-and-push.outputs.image-tag }}"
+          echo "Application should be available at: http://${{ secrets.ECS_HOST }}:8000/docs"
+        else
+          echo "❌ Deployment failed!"
+          exit 1 
