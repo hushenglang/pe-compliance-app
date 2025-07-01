@@ -69,6 +69,51 @@ async def fetch_and_persist_today_news(
         logger.error(f"[POST /today] Failed to fetch and persist news: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch and persist news: {str(e)}")
 
+@router.post("/date/{date}", response_model=List[ComplianceNewsResponse])
+async def fetch_and_persist_news_by_date(
+    date: str,
+    llm_enabled: bool = True,
+    user: str = "api",
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch and persist SFC news for a specific date and return all persisted news.
+    
+    - **date**: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
+    - **llm_enabled**: Whether to enable LLM processing for content summarization
+    - **user**: User who initiated the fetch operation
+    
+    Returns:
+        List of persisted ComplianceNews objects
+    """
+    logger.info(f"[POST /date/{date}] Starting fetch and persist news by date request - date: {date}, llm_enabled: {llm_enabled}, user: {user}")
+    
+    # Validate date format
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        logger.error(f"[POST /date/{date}] Invalid date format: {date}")
+        raise HTTPException(status_code=400, detail="Invalid date format. Please use yyyy-mm-dd format (e.g., 2024-12-15)")
+    
+    # Create a service instance with database session
+    sfc_news_service = SfcNewsService(db)
+    
+    try:
+        # Fetch and persist news for the specified date
+        logger.info(f"[POST /date/{date}] Calling SfcNewsService.fetch_and_persist_news_by_date")
+        persisted_news = sfc_news_service.fetch_and_persist_news_by_date(
+            date=date,
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        
+        logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(persisted_news)} news items")
+        return persisted_news
+        
+    except Exception as e:
+        logger.error(f"[POST /date/{date}] Failed to fetch and persist news: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch and persist news: {str(e)}")
+
 @router.get("/last7days", response_model=List[ComplianceNewsResponse])
 async def get_last_7days_news(db: Session = Depends(get_db)):
     """
