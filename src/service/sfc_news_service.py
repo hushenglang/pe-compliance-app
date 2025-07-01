@@ -4,6 +4,7 @@ import logging
 from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from urllib.parse import urlparse, parse_qs
 
 from client.sfc_news_client import SfcNewsClient
 from model.compliance_news import ComplianceNews
@@ -162,3 +163,49 @@ class SfcNewsService:
         
         self.logger.info(f"Fetching SFC news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
         return self.get_news_by_date_range(start_date, end_date) 
+
+    def convert_api_url_to_news_orignal_url(self, api_url: str) -> str:
+        """Convert SFC API URL to gateway URL format.
+        Converts from:
+        https://apps.sfc.hk/edistributionWeb/api/news/content?refNo=25PR99&lang=TC
+        To:
+        https://apps.sfc.hk/edistributionWeb/gateway/TC/news-and-announcements/news/doc?refNo=25PR99
+        Args:
+            api_url: The original API URL
+        Returns:
+            The converted gateway URL
+        Raises:
+            ValueError: If the URL format is invalid or missing required parameters
+        """
+        try:
+            parsed_url = urlparse(api_url)
+            
+            # Validate base URL
+            expected_base = "https://apps.sfc.hk/edistributionWeb"
+            actual_base = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path.split('/api')[0]}"
+            
+            if actual_base != expected_base:
+                raise ValueError(f"Invalid base URL. Expected: {expected_base}, Got: {actual_base}")
+            
+            # Extract query parameters
+            query_params = parse_qs(parsed_url.query)
+            
+            # Get refNo parameter
+            ref_no = query_params.get('refNo')
+            if not ref_no:
+                raise ValueError("Missing 'refNo' parameter in URL")
+            ref_no = ref_no[0]  # parse_qs returns lists
+            
+            # Get lang parameter (default to 'TC' if not present)
+            lang = query_params.get('lang', ['TC'])[0]
+            
+            # Construct the new gateway URL
+            gateway_url = f"{expected_base}/gateway/{lang}/news-and-announcements/news/doc?refNo={ref_no}"
+            
+            self.logger.debug(f"Converted API URL to gateway URL: {api_url} -> {gateway_url}")
+            return gateway_url
+            
+        except Exception as e:
+            self.logger.error(f"Failed to convert API URL to gateway URL: {api_url}, error: {e}")
+            raise ValueError(f"Invalid URL format: {e}")
+

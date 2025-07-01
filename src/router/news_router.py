@@ -146,18 +146,18 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     
     try:
         logger.info("[GET /html-email/last7days] Calling SfcNewsService.get_news_last_7days")
-        news_items = sfc_news_service.get_news_last_7days()
+        sfc_news_items = sfc_news_service.get_news_last_7days()
         html_email = ""
-        for news_item in news_items:
-            source = news_item.source
-            issue_date = news_item.issue_date.strftime("%Y-%m-%d")
-            title = news_item.title
-            content_url = news_item.content_url
-            llm_summary = news_item.llm_summary
+        for sfc_news_item in sfc_news_items:
+            source = sfc_news_item.source
+            issue_date = sfc_news_item.issue_date.strftime("%Y-%m-%d")
+            title = sfc_news_item.title
+            content_url = sfc_news_service.convert_api_url_to_news_orignal_url(sfc_news_item.content_url)
+            llm_summary = sfc_news_item.llm_summary
             html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
             html_email = html_email + f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
 
-        logger.info(f"[GET /html-email/last7days] Successfully retrieved {len(news_items)} news items from last 7 days")
+        logger.info(f"[GET /html-email/last7days] Successfully retrieved {len(sfc_news_items)} news items from last 7 days")
         return html_email
         
     except Exception as e:
