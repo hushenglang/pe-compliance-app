@@ -1,6 +1,6 @@
 import requests
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 from util.logging_util import get_logger
 
@@ -30,7 +30,7 @@ class HKMAClient:
         Returns:
             List of dictionaries containing title, link, and date
         """
-        params = {
+        params: Dict[str, Union[str, int]] = {
             "offset": offset,
             "lang": lang,
             "choose": "date"
@@ -136,7 +136,7 @@ class HKMAClient:
             datetime.strptime(from_date, "%Y-%m-%d")
             datetime.strptime(to_date, "%Y-%m-%d")
         except ValueError:
-            self.logger.error(f"Invalid date format. Expected format: yyyy-mm-dd")
+            self.logger.error("Invalid date format. Expected format: yyyy-mm-dd")
             return []
         
         return self.fetch_press_releases(from_date=from_date, to_date=to_date, lang=lang)

@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from client.hkma_client import HKMAClient
 from model.compliance_news import ComplianceNews
 from repo.compliance_news_repository import ComplianceNewsRepository
@@ -210,14 +210,15 @@ class HkmaNewsService:
         content = None
         if item.get("link"):
             raw_content = self.client.fetch_press_release_content(item["link"])
-            content = self._extract_content_from_hkma_html(raw_content)
-            if content:
-                self.logger.debug(f"Fetched content for press release: {item.get('title')}")
-            else:
-                self.logger.warning(f"Failed to fetch content for press release: {item.get('title')}")
+            if raw_content:
+                content = self._extract_content_from_hkma_html(raw_content)
+                if content:
+                    self.logger.debug(f"Fetched content for press release: {item.get('title')}")
+                else:
+                    self.logger.warning(f"Failed to fetch content for press release: {item.get('title')}")
         return content
     
-    def _parse_issue_date(self, date_str: str) -> Optional[datetime]:
+    def _parse_issue_date(self, date_str: Optional[str]) -> Optional[datetime]:
         """Parse issue date string to datetime object.
         
         Args:
@@ -247,14 +248,17 @@ class HkmaNewsService:
         Returns:
             String containing the content
         """
+        if not html_content:
+            return ""
+            
         self.logger.info(f"Extracting content from HTML: {html_content[:100]}")
         soup = BeautifulSoup(html_content, 'html.parser')
         # Find the main content div
         content_div = soup.find('div', class_='content-with-right-content layout-press-release-detail full-content-printer')
-        if content_div:
+        if content_div and isinstance(content_div, Tag):
             # Find the content wrapper within the main div
             content_wrapper = content_div.find('div', class_='content-wrapper')
-            if content_wrapper:
+            if content_wrapper and isinstance(content_wrapper, Tag):
                 self.logger.info(f"Found content wrapper: {content_wrapper}")
                 return content_wrapper.get_text()
     

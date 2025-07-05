@@ -353,5 +353,5 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     if errors:
         logger.warning(f"[GET /html-email/last7days] Partial failures occurred: {'; '.join(errors)}")
     
-    logger.info(f"[GET /html-email/last7days] Successfully generated HTML email")
+    logger.info("[GET /html-email/last7days] Successfully generated HTML email")
     return html_email

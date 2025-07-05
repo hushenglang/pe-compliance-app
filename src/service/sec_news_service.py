@@ -256,7 +256,7 @@ class SecNewsService:
             # Fallback to description if content fetching fails
             return press_release.get("description")
     
-    def _parse_issue_date(self, date_str: str) -> Optional[datetime]:
+    def _parse_issue_date(self, date_str: Optional[str]) -> Optional[datetime]:
         """Parse issue date string to datetime object.
         
         Args:

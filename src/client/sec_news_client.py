@@ -1,7 +1,7 @@
 import requests
 import xml.etree.ElementTree as ET
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 from bs4 import BeautifulSoup
 from util.logging_util import get_logger
 
@@ -35,7 +35,7 @@ class SECNewsClient:
             List of dictionaries containing title, link, description, date, and guid
         """
         try:
-            self.logger.info(f"Fetching press releases from SEC RSS feed")
+            self.logger.info("Fetching press releases from SEC RSS feed")
             response = requests.get(self.base_url, headers=self.headers, timeout=30)
             response.raise_for_status()
             
@@ -73,12 +73,12 @@ class SECNewsClient:
                             formatted_date = pub_date_str
                     
                     press_release = {
-                        "title": title_elem.text.strip() if title_elem is not None else None,
-                        "link": link_elem.text.strip() if link_elem is not None else None,
-                        "description": description_elem.text.strip() if description_elem is not None else None,
+                        "title": title_elem.text.strip() if title_elem is not None and title_elem.text else None,
+                        "link": link_elem.text.strip() if link_elem is not None and link_elem.text else None,
+                        "description": description_elem.text.strip() if description_elem is not None and description_elem.text else None,
                         "date": formatted_date,
                         "pubDate": pub_date_str,
-                        "guid": guid_elem.text.strip() if guid_elem is not None else None
+                        "guid": guid_elem.text.strip() if guid_elem is not None and guid_elem.text else None
                     }
                     
                     # Apply date filtering if specified
@@ -214,7 +214,7 @@ class SECNewsClient:
             datetime.strptime(from_date, "%Y-%m-%d")
             datetime.strptime(to_date, "%Y-%m-%d")
         except ValueError:
-            self.logger.error(f"Invalid date format. Expected format: yyyy-mm-dd")
+            self.logger.error("Invalid date format. Expected format: yyyy-mm-dd")
             return []
         
         return self.fetch_press_releases(from_date=from_date, to_date=to_date)
