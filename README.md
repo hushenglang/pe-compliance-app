@@ -1,170 +1,352 @@
-# PE Company Compliance Application
+# Financial Compliance News API
 
-A comprehensive application for financial compliance news crawling and AI-powered analysis.
+A FastAPI-based application for fetching, processing, and managing financial compliance news from Hong Kong regulatory authorities (HKMA and SFC). This application is designed specifically for private equity and financial institutions to stay updated with the latest regulatory developments.
 
-## Features
+## 🏗️ Architecture Overview
 
-- **SFC News Crawler**: Scrapes compliance news from Hong Kong Securities and Futures Commission (SFC)
-- **AI Agent Service**: Uses GPT-4o-mini via OpenRouter for financial compliance analysis
-- **Database Storage**: Stores compliance news with metadata in MySQL database
-- **RESTful API**: Provides endpoints for accessing and managing compliance data
+The application follows a clean architecture pattern with:
+- **FastAPI** for REST API endpoints
+- **SQLAlchemy** for database operations
+- **MySQL** for data persistence
+- **OpenRouter API** for AI-powered content summarization
+- **Docker** for containerization
+- **GitHub Actions** for CI/CD pipeline
 
-## Components
+## 📋 Features
 
-### SFC News Service
-- Fetches compliance news from SFC official website
-- Stores news content with full metadata
-- Supports date-based queries and filtering
+### Core Functionality
+- **Multi-Source News Fetching**: Automatically fetches compliance news from:
+  - Hong Kong Monetary Authority (HKMA)
+  - Securities and Futures Commission (SFC)
+- **AI-Powered Summarization**: Uses OpenRouter API to generate intelligent summaries of regulatory content
+- **Flexible Date Range Queries**: Fetch news for specific dates, date ranges, or recent periods
+- **Structured Data Storage**: Stores news with metadata in MySQL database
+- **RESTful API**: Clean API endpoints for integration with other systems
 
-### Agent Service
-- Powered by OpenAI Agent SDK using GPT-4o-mini via OpenRouter
-- Specialized system prompt for financial compliance analysis
-- Simple LLM calls without tools or handoffs
-- Configurable system prompts
+### Technical Features
+- **Environment-Aware Configuration**: Supports development, staging, and production environments
+- **Structured Logging**: JSON logging for production, detailed logging for development
+- **Health Monitoring**: Built-in health check endpoints
+- **Database Connection Pooling**: Efficient database connection management
+- **CORS Support**: Configurable cross-origin resource sharing
+- **Docker Support**: Containerized deployment with health checks
 
-## Setup
+## 🛠️ Technology Stack
 
-1. **Install Dependencies**:
-   ```bash
-   pip install -e .
-   ```
+- **Backend**: FastAPI 0.115.14+, Python 3.13+
+- **Database**: MySQL with SQLAlchemy ORM
+- **AI/ML**: OpenRouter API for content summarization
+- **Container**: Docker with multi-stage builds
+- **Package Management**: UV for fast dependency management
+- **Code Quality**: Ruff for linting, MyPy for type checking
+- **CI/CD**: GitHub Actions with automated testing and deployment
 
-2. **Environment Variables**:
-   Create a `.env` file with the following variables:
-   ```bash
-   # OpenRouter Configuration (used instead of direct OpenAI)
-   OPENROUTER_API_KEY=your_openrouter_api_key_here
-   OPENROUTER_MODEL=openai/gpt-4o-mini
-   OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-   
-   # Database Configuration
-   MySQL_DATABASE_URL=mysql+pymysql://username:password@host:port/database_name
-   
-   # Optional: Application Environment
-   APP_ENV=production
-   LOG_LEVEL=INFO
-   ```
-   
-   **Environment Variable Loading (Production-Ready)**:
-   - **Development**: Automatically loads `.env` file when `APP_ENV=development` (default)
-   - **Production**: Only uses environment variables from container runtime (no `.env` file loading)
-   - **Docker**: Environment variables passed via `-e` flag or `--env-file` override all defaults
-   - **Precedence**: Docker env vars > .env file (dev only) > Dockerfile defaults
+## 📦 Installation
 
-3. **Database Setup**:
-   ```bash
-   # Run the SQL script to create necessary tables
-   mysql -u username -p database_name < doc/table_creation.sql
-   ```
+### Prerequisites
+- Python 3.13 or higher
+- MySQL database
+- OpenRouter API key
+- Docker (optional, for containerized deployment)
 
-## Docker Deployment
+### Local Development Setup
 
-### Option 1: Using Docker Compose (Recommended for Development)
+1. **Clone the repository**:
 ```bash
-# For development with .env file loading (default)
-docker-compose up -d
-
-# For production mode (environment variables only)
-APP_ENV=production docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+git clone <repository-url>
+cd pe-compliance-app
 ```
 
-### Option 2: Manual Docker Commands
+2. **Install UV package manager**:
 ```bash
-# Build the image
+pip install uv
+```
+
+3. **Install dependencies**:
+```bash
+uv sync
+```
+
+4. **Set up environment variables**:
+Create a `.env` file in the project root:
+```bash
+# Database Configuration
+MySQL_DATABASE_URL=mysql+pymysql://username:password@localhost:3306/compliance_db
+
+# OpenRouter API Configuration
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_MODEL=openai/gpt-4o-mini
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# Application Configuration
+APP_ENV=development
+LOG_LEVEL=INFO
+LOG_TO_FILE=false
+LOG_FILE_PATH=logs/app.log
+```
+
+5. **Set up the database**:
+```bash
+# Create database schema
+mysql -u username -p < sql/table_creation.sql
+```
+
+6. **Run the application**:
+```bash
+uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
+
+## 🐳 Docker Deployment
+
+### Build and Run with Docker
+
+1. **Build the Docker image**:
+```bash
 ./build.sh
+```
 
-# Run with .env file
-docker run -d --name pe-compliance-app -p 8000:8000 --env-file .env pe-compliance-app:latest
-
-# Or run with individual environment variables (PRODUCTION)
-docker run -d --name pe-compliance-app -p 8000:8000 \
-  -e APP_ENV="production" \
-  -e OPENROUTER_API_KEY="your_api_key" \
-  -e MySQL_DATABASE_URL="your_db_url" \
+2. **Run the container**:
+```bash
+docker run -d \
+  --name pe-compliance-app-container \
+  -p 8000:8000 \
+  --env-file .env \
   pe-compliance-app:latest
 ```
 
-### Environment Variable Management in Docker
-
-1. **Development**: Use `--env-file .env` for local development with `APP_ENV=development`
-2. **Production**: Pass environment variables directly using `-e` flags with `APP_ENV=production`
-3. **CI/CD**: Use secrets management (e.g., GitHub Secrets, AWS Secrets Manager)
-
-**Security Best Practices**:
-- ✅ `.env` files are **only loaded in development** (when `APP_ENV=development`)
-- ✅ **Production mode** (`APP_ENV=production`) **never** loads `.env` files
-- ✅ Never commit `.env` files to version control
-- ✅ Use Docker secrets or orchestration platform secrets for production
-- ✅ Rotate API keys regularly and validate environment variables on startup
-
-## Usage
-
-### SFC News Service Example
-```python
-from service.sfc_news_service import SfcNewsService
-
-# Fetch today's news
-with SfcNewsService() as service:
-    news_items = service.fetch_and_persist_today_news()
-    print(f"Found {len(news_items)} news items")
-```
-
-### Agent Service Example
-```python
-from service.agent_service import AgentService
-
-# Initialize agent with default financial compliance prompt
-agent = AgentService()
-
-# Generate response
-response = agent.generate_response("What are key SFC compliance requirements?")
-print(response)
-
-# Update system prompt
-agent.update_system_prompt("You are a specialized Hong Kong SFC regulatory expert...")
-```
-
-### Running Examples
+3. **View logs**:
 ```bash
-python src/example_usage.py
+docker logs -f pe-compliance-app-container
 ```
 
-## API Keys
+### Docker Compose (Recommended)
 
-### OpenRouter API Key
-1. Sign up at [OpenRouter](https://openrouter.ai/)
-2. Create an API key
-3. Set the `OPENROUTER_API_KEY` environment variable
+Create a `docker-compose.yml` file:
+```yaml
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - LOG_LEVEL=INFO
+      - MySQL_DATABASE_URL=mysql+pymysql://username:password@db:3306/compliance_db
+      - OPENROUTER_API_KEY=your_api_key_here
+    depends_on:
+      - db
+    
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=compliance_db
+      - MYSQL_USER=username
+      - MYSQL_PASSWORD=password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/table_creation.sql:/docker-entrypoint-initdb.d/init.sql
 
-## Project Structure
+volumes:
+  mysql_data:
+```
+
+Run with: `docker-compose up -d`
+
+## 🔌 API Endpoints
+
+### News Endpoints
+
+#### Fetch Today's News
+```http
+POST /api/news/today
+```
+**Parameters:**
+- `llm_enabled` (bool, optional): Enable AI summarization (default: true)
+- `user` (string, optional): User initiating the request (default: "api")
+
+**Response:** List of compliance news items for today
+
+#### Fetch News by Date
+```http
+POST /api/news/date/{date}
+```
+**Parameters:**
+- `date` (string): Date in YYYY-MM-DD format (e.g., "2024-12-15")
+- `llm_enabled` (bool, optional): Enable AI summarization (default: true)
+- `user` (string, optional): User initiating the request (default: "api")
+
+**Response:** List of compliance news items for the specified date
+
+#### Get Last 7 Days News
+```http
+GET /api/news/last7days
+```
+**Response:** List of compliance news items from the last 7 days
+
+#### Get HTML Email Format
+```http
+GET /api/news/html-email/last7days
+```
+**Response:** HTML-formatted email content with last 7 days of news
+
+### Health Endpoints
+
+#### Health Check
+```http
+GET /api/health/
+```
+**Response:** 
+```json
+{
+  "status": "healthy",
+  "service": "financial-compliance-api"
+}
+```
+
+### Response Format
+
+All news endpoints return data in the following format:
+```json
+{
+  "id": 1,
+  "source": "HKMA",
+  "issue_date": "2024-12-15T00:00:00Z",
+  "title": "Regulatory Update on Digital Assets",
+  "content": "Full content of the regulatory update...",
+  "content_url": "https://www.hkma.gov.hk/...",
+  "llm_summary": "AI-generated summary of the content...",
+  "creation_date": "2024-12-15T10:00:00Z",
+  "creation_user": "api"
+}
+```
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `MySQL_DATABASE_URL` | MySQL database connection string | - | Yes |
+| `OPENROUTER_API_KEY` | OpenRouter API key for AI processing | - | Yes |
+| `OPENROUTER_MODEL` | AI model to use | `openai/gpt-4o-mini` | No |
+| `OPENROUTER_BASE_URL` | OpenRouter API base URL | `https://openrouter.ai/api/v1` | No |
+| `APP_ENV` | Application environment | `development` | No |
+| `LOG_LEVEL` | Logging level | `INFO` | No |
+| `LOG_TO_FILE` | Enable file logging | `false` | No |
+| `LOG_FILE_PATH` | Log file path | `logs/app.log` | No |
+
+### Database Configuration
+
+The application uses MySQL with the following schema:
+- `compliance_news` table for storing news articles
+- Support for multiple sources (HKMA, SFC)
+- Full-text search capabilities
+- Metadata tracking for audit purposes
+
+## 🔧 Development
+
+### Code Quality
+
+The project uses several tools for code quality:
+
+```bash
+# Linting
+uv run ruff check src/
+
+# Type checking
+uv run mypy src/
+
+# Run tests
+uv run pytest
+```
+
+### Project Structure
 
 ```
-src/
-├── client/          # External API clients (SFC)
-├── config/          # Database configuration
-├── model/           # Data models
-├── repo/            # Repository layer
-├── service/         # Business logic services
-│   ├── sfc_news_service.py    # SFC news operations
-│   └── agent_service.py       # AI agent operations
-└── util/            # Utility functions
+pe-compliance-app/
+├── src/
+│   ├── client/          # External API clients
+│   ├── config/          # Configuration management
+│   ├── constant/        # Application constants
+│   ├── model/           # Database models
+│   ├── repo/            # Data access layer
+│   ├── router/          # API route handlers
+│   ├── service/         # Business logic
+│   └── util/            # Utility functions
+├── sql/                 # Database schemas
+├── Dockerfile           # Container configuration
+├── pyproject.toml       # Project dependencies
+└── build.sh            # Build script
 ```
 
-## Dependencies
+## 🚀 Deployment
 
-- Python 3.13+
-- SQLAlchemy 2.0+
-- OpenAI Agents SDK
-- Requests
-- PyMySQL
-- Pydantic
+### CI/CD Pipeline
 
-## License
+The application includes a comprehensive GitHub Actions pipeline:
 
-This project is licensed under the MIT License.
+1. **Code Quality**: Linting and type checking
+2. **Build**: Docker image creation
+3. **Security**: Container vulnerability scanning
+4. **Deploy**: Automated deployment to ECS
+5. **Monitoring**: Health checks and logging
+
+### Production Deployment
+
+For production deployment:
+
+1. Set environment variables appropriately
+2. Configure database with connection pooling
+3. Set up log aggregation (ELK stack recommended)
+4. Configure monitoring and alerting
+5. Set up backup strategies for database
+
+## 🔒 Security Considerations
+
+- API keys are managed through environment variables
+- Database connections use connection pooling
+- Container runs as non-root user
+- Regular security scanning of dependencies
+- Input validation on all API endpoints
+
+## 📊 Monitoring and Logging
+
+- Structured JSON logging in production
+- Detailed logging in development
+- Health check endpoints for monitoring
+- Request/response logging for debugging
+- Database query logging (development only)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run code quality checks
+6. Submit a pull request
+
+## 📜 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the API documentation at `/docs`
+2. Review the logs for error details
+3. Consult the configuration documentation
+4. Open an issue in the repository
+
+## 📝 Changelog
+
+### v0.1.0
+- Initial release with HKMA and SFC news fetching
+- AI-powered content summarization
+- RESTful API endpoints
+- Docker containerization
+- CI/CD pipeline implementation
