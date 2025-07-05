@@ -1,7 +1,8 @@
-1. create dockerfile and build script
-2. create git action to build and push to docker hub, and deploy to Alicloud ECS server
-3. create n8n workflow
-    3.1 one is to fetch and persist today's news, which is daily job
-    3.2 the other is to get the last 7 days news, and send email to the user, which is weekly job
+1. LLM with tavily search tool to improve the news summary from all different other sources
+2.integrate with other news sources, like HKEX, HKMA, etc.
 
 
+HKMA: https://www.hkma.gov.hk/eng/news-and-media/press-releases/
+HKEX: https://www.hkex.com.hk/News/Regulatory-Announcements?sc_lang=en
+CSRC: http://www.csrc.gov.cn/csrc/c100039/common_list.shtml
+SEC: https://www.sec.gov/newsroom/press-releases

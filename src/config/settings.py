@@ -2,6 +2,9 @@
 
 import os
 
+from util.logging_util import get_logger
+
+logger = get_logger(__name__)
 
 class Settings:
     """Application settings with environment-aware configuration loading."""
@@ -20,11 +23,11 @@ class Settings:
             try:
                 from dotenv import load_dotenv
                 load_dotenv()
-                print(f"🔧 Loaded .env file for {app_env} environment")
+                logger.info(f"🔧 Loaded .env file for {app_env} environment")
             except ImportError:
-                print("⚠️  python-dotenv not installed, skipping .env file loading")
+                logger.warning("⚠️  python-dotenv not installed, skipping .env file loading")
         else:
-            print(f"🚀 Production mode ({app_env}): Using environment variables only")
+            logger.info(f"🚀 Production mode ({app_env}): Using environment variables only")
     
     def _validate_required_settings(self):
         """Validate that all required environment variables are set."""
@@ -43,7 +46,7 @@ class Settings:
                 f"(current environment: {self.app_env})"
             )
         
-        print(f"✅ All required environment variables are set for {self.app_env} environment")
+        logger.info(f"✅ All required environment variables are set for {self.app_env} environment")
     
     @property
     def database_url(self) -> str:

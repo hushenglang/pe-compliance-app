@@ -7,6 +7,7 @@ import logging
 import markdown2  # type: ignore
 
 from service.sfc_news_service import SfcNewsService
+from service.hkma_news_service import HkmaNewsService
 from config.database import get_db
 from util.logging_util import get_logger
 
@@ -42,33 +43,63 @@ async def fetch_and_persist_today_news(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch and persist today's SFC news and return all persisted news.
+    Fetch and persist today's news from both SFC and HKMA sources and return all persisted news.
     
     - **llm_enabled**: Whether to enable LLM processing for content summarization
     - **user**: User who initiated the fetch operation
     
     Returns:
-        List of persisted ComplianceNews objects
+        List of persisted ComplianceNews objects from both SFC and HKMA sources
     """
     logger.info(f"[POST /today] Starting fetch and persist today's news request - llm_enabled: {llm_enabled}, user: {user}")
     
-    # Create a service instance with database session
+    # Create service instances with database session
     sfc_news_service = SfcNewsService(db)
+    hkma_news_service = HkmaNewsService(db)
+    
+    all_persisted_news = []
+    errors = []
     
     try:
-        # Fetch and persist today's news
+        # Fetch and persist today's SFC news
         logger.info("[POST /today] Calling SfcNewsService.fetch_and_persist_today_news")
-        persisted_news = await sfc_news_service.fetch_and_persist_today_news(
+        sfc_news = await sfc_news_service.fetch_and_persist_today_news(
             creation_user=user,
             llm_enabled=llm_enabled
         )
-        
-        logger.info(f"[POST /today] Successfully fetched and persisted {len(persisted_news)} news items")
-        return persisted_news
+        all_persisted_news.extend(sfc_news)
+        logger.info(f"[POST /today] Successfully fetched and persisted {len(sfc_news)} SFC news items")
         
     except Exception as e:
-        logger.error(f"[POST /today] Failed to fetch and persist news: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch and persist news: {str(e)}")
+        logger.error(f"[POST /today] Failed to fetch and persist SFC news: {str(e)}")
+        errors.append(f"SFC: {str(e)}")
+    
+    try:
+        # Fetch and persist today's HKMA news
+        logger.info("[POST /today] Calling HkmaNewsService.fetch_and_persist_today_news")
+        hkma_news = await hkma_news_service.fetch_and_persist_today_news(
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        all_persisted_news.extend(hkma_news)
+        logger.info(f"[POST /today] Successfully fetched and persisted {len(hkma_news)} HKMA news items")
+        
+    except Exception as e:
+        logger.error(f"[POST /today] Failed to fetch and persist HKMA news: {str(e)}")
+        errors.append(f"HKMA: {str(e)}")
+    
+    # If both services failed, raise an error
+    if errors and not all_persisted_news:
+        error_message = "; ".join(errors)
+        logger.error(f"[POST /today] All services failed: {error_message}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch and persist news: {error_message}")
+    
+    # Log partial failures
+    if errors:
+        logger.warning(f"[POST /today] Partial failures occurred: {'; '.join(errors)}")
+    
+    logger.info(f"[POST /today] Successfully fetched and persisted {len(all_persisted_news)} total news items")
+    return all_persisted_news
 
 @router.post("/date/{date}", response_model=List[ComplianceNewsResponse])
 async def fetch_and_persist_news_by_date(
@@ -78,14 +109,14 @@ async def fetch_and_persist_news_by_date(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch and persist SFC news for a specific date and return all persisted news.
+    Fetch and persist news from both SFC and HKMA sources for a specific date and return all persisted news.
     
     - **date**: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
     - **llm_enabled**: Whether to enable LLM processing for content summarization
     - **user**: User who initiated the fetch operation
     
     Returns:
-        List of persisted ComplianceNews objects
+        List of persisted ComplianceNews objects from both SFC and HKMA sources
     """
     logger.info(f"[POST /date/{date}] Starting fetch and persist news by date request - date: {date}, llm_enabled: {llm_enabled}, user: {user}")
     
@@ -96,70 +127,168 @@ async def fetch_and_persist_news_by_date(
         logger.error(f"[POST /date/{date}] Invalid date format: {date}")
         raise HTTPException(status_code=400, detail="Invalid date format. Please use yyyy-mm-dd format (e.g., 2024-12-15)")
     
-    # Create a service instance with database session
+    # Create service instances with database session
     sfc_news_service = SfcNewsService(db)
+    hkma_news_service = HkmaNewsService(db)
+    
+    all_persisted_news = []
+    errors = []
     
     try:
-        # Fetch and persist news for the specified date
+        # Fetch and persist SFC news for the specified date
         logger.info(f"[POST /date/{date}] Calling SfcNewsService.fetch_and_persist_news_by_date")
-        persisted_news = await sfc_news_service.fetch_and_persist_news_by_date(
+        sfc_news = await sfc_news_service.fetch_and_persist_news_by_date(
             date=date,
             creation_user=user,
             llm_enabled=llm_enabled
         )
-        
-        logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(persisted_news)} news items")
-        return persisted_news
+        all_persisted_news.extend(sfc_news)
+        logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(sfc_news)} SFC news items")
         
     except Exception as e:
-        logger.error(f"[POST /date/{date}] Failed to fetch and persist news: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch and persist news: {str(e)}")
+        logger.error(f"[POST /date/{date}] Failed to fetch and persist SFC news: {str(e)}")
+        errors.append(f"SFC: {str(e)}")
+    
+    try:
+        # Fetch and persist HKMA news for the specified date
+        logger.info(f"[POST /date/{date}] Calling HkmaNewsService.fetch_and_persist_news_by_date")
+        hkma_news = await hkma_news_service.fetch_and_persist_news_by_date(
+            date=date,
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        all_persisted_news.extend(hkma_news)
+        logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(hkma_news)} HKMA news items")
+        
+    except Exception as e:
+        logger.error(f"[POST /date/{date}] Failed to fetch and persist HKMA news: {str(e)}")
+        errors.append(f"HKMA: {str(e)}")
+    
+    # If both services failed, raise an error
+    if errors and not all_persisted_news:
+        error_message = "; ".join(errors)
+        logger.error(f"[POST /date/{date}] All services failed: {error_message}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch and persist news: {error_message}")
+    
+    # Log partial failures
+    if errors:
+        logger.warning(f"[POST /date/{date}] Partial failures occurred: {'; '.join(errors)}")
+    
+    logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(all_persisted_news)} total news items")
+    return all_persisted_news
 
 @router.get("/last7days", response_model=List[ComplianceNewsResponse])
 async def get_last_7days_news(db: Session = Depends(get_db)):
     """
-    Get SFC news from the last 7 days.
+    Get news from both SFC and HKMA sources from the last 7 days.
+    
+    Returns:
+        List of ComplianceNews objects from the last 7 days from both sources
     """
     logger.info("[GET /last7days] Starting request to get last 7 days news")
     
     sfc_news_service = SfcNewsService(db)
+    hkma_news_service = HkmaNewsService(db)
+    
+    all_news_items = []
+    errors = []
     
     try:
         logger.info("[GET /last7days] Calling SfcNewsService.get_news_last_7days")
-        news_items = sfc_news_service.get_news_last_7days()
-        
-        logger.info(f"[GET /last7days] Successfully retrieved {len(news_items)} news items from last 7 days")
-        return news_items
+        sfc_news_items = sfc_news_service.get_news_last_7days()
+        all_news_items.extend(sfc_news_items)
+        logger.info(f"[GET /last7days] Successfully retrieved {len(sfc_news_items)} SFC news items from last 7 days")
         
     except Exception as e:
-        logger.error(f"[GET /last7days] Failed to fetch news: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
+        logger.error(f"[GET /last7days] Failed to fetch SFC news: {str(e)}")
+        errors.append(f"SFC: {str(e)}")
+    
+    try:
+        logger.info("[GET /last7days] Calling HkmaNewsService.get_news_last_7days")
+        hkma_news_items = hkma_news_service.get_news_last_7days()
+        all_news_items.extend(hkma_news_items)
+        logger.info(f"[GET /last7days] Successfully retrieved {len(hkma_news_items)} HKMA news items from last 7 days")
+        
+    except Exception as e:
+        logger.error(f"[GET /last7days] Failed to fetch HKMA news: {str(e)}")
+        errors.append(f"HKMA: {str(e)}")
+    
+    # If both services failed, raise an error
+    if errors and not all_news_items:
+        error_message = "; ".join(errors)
+        logger.error(f"[GET /last7days] All services failed: {error_message}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {error_message}")
+    
+    # Log partial failures
+    if errors:
+        logger.warning(f"[GET /last7days] Partial failures occurred: {'; '.join(errors)}")
+    
+    logger.info(f"[GET /last7days] Successfully retrieved {len(all_news_items)} total news items from last 7 days")
+    return all_news_items
 
 @router.get("/html-email/last7days", response_model=str)
 async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     """
-    Get SFC news from the last 7 days, convert to html email format.
+    Get news from both SFC and HKMA sources from the last 7 days, convert to html email format.
+    
+    Returns:
+        HTML formatted string for email containing news from both sources
     """
     logger.info("[GET /html-email/last7days] Starting request to get last 7 days news")
     
     sfc_news_service = SfcNewsService(db)
+    hkma_news_service = HkmaNewsService(db)
+    
+    html_email = ""
+    errors = []
     
     try:
         logger.info("[GET /html-email/last7days] Calling SfcNewsService.get_news_last_7days")
         sfc_news_items = sfc_news_service.get_news_last_7days()
-        html_email = ""
+        
         for sfc_news_item in sfc_news_items:
             source = sfc_news_item.source
-            issue_date = sfc_news_item.issue_date.strftime("%Y-%m-%d")
+            issue_date = sfc_news_item.issue_date.strftime("%Y-%m-%d") if sfc_news_item.issue_date else "N/A"
             title = sfc_news_item.title
             content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(sfc_news_item.content_url)) if sfc_news_item.content_url else ""
             llm_summary = sfc_news_item.llm_summary
             html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
-            html_email = html_email + f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
-
-        logger.info(f"[GET /html-email/last7days] Successfully retrieved {len(sfc_news_items)} news items from last 7 days")
-        return html_email
+            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
+        
+        logger.info(f"[GET /html-email/last7days] Successfully processed {len(sfc_news_items)} SFC news items")
         
     except Exception as e:
-        logger.error(f"[GET /html-email/last7days] Failed to fetch news: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
+        logger.error(f"[GET /html-email/last7days] Failed to process SFC news: {str(e)}")
+        errors.append(f"SFC: {str(e)}")
+    
+    try:
+        logger.info("[GET /html-email/last7days] Calling HkmaNewsService.get_news_last_7days")
+        hkma_news_items = hkma_news_service.get_news_last_7days()
+        
+        for hkma_news_item in hkma_news_items:
+            source = hkma_news_item.source
+            issue_date = hkma_news_item.issue_date.strftime("%Y-%m-%d") if hkma_news_item.issue_date else "N/A"
+            title = hkma_news_item.title
+            content_url = str(hkma_news_item.content_url) if hkma_news_item.content_url else ""
+            llm_summary = hkma_news_item.llm_summary
+            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
+            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
+        
+        logger.info(f"[GET /html-email/last7days] Successfully processed {len(hkma_news_items)} HKMA news items")
+        
+    except Exception as e:
+        logger.error(f"[GET /html-email/last7days] Failed to process HKMA news: {str(e)}")
+        errors.append(f"HKMA: {str(e)}")
+    
+    # If both services failed, raise an error
+    if errors and not html_email:
+        error_message = "; ".join(errors)
+        logger.error(f"[GET /html-email/last7days] All services failed: {error_message}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {error_message}")
+    
+    # Log partial failures
+    if errors:
+        logger.warning(f"[GET /html-email/last7days] Partial failures occurred: {'; '.join(errors)}")
+    
+    logger.info(f"[GET /html-email/last7days] Successfully generated HTML email")
+    return html_email
