@@ -1,7 +1,7 @@
 """HKMA News Service for fetching and persisting HKMA compliance news."""
 
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from bs4 import BeautifulSoup
@@ -49,64 +49,12 @@ class HkmaNewsService:
         try:
             # Fetch press releases from HKMA API
             press_releases = self.client.fetch_press_releases_by_single_date(date)
-            
-            if not press_releases:
-                self.logger.info(f"No press releases found for date: {date}")
-                return []
-            
-            self.logger.info(f"Found {len(press_releases)} press releases for date: {date}")
-            
-            persisted_news = []
-            for item in press_releases:
-                try:
-                    # Fetch content for each press release
-                    content = None
-                    if item.get("link"):
-                        content = self._extract_content_from_hkma_html(self.client.fetch_press_release_content(item["link"]))
-                        if content:
-                            self.logger.debug(f"Fetched content for press release: {item.get('title')}")
-                        else:
-                            self.logger.warning(f"Failed to fetch content for press release: {item.get('title')}")
-                    
-                    # Convert date string to datetime
-                    issue_date = None
-                    if item.get("date"):
-                        try:
-                            issue_date = datetime.strptime(item["date"], "%Y-%m-%d")
-                            # Localize to Hong Kong timezone
-                            hk_tz = get_hk_timezone()
-                            issue_date = issue_date.replace(tzinfo=hk_tz)
-                        except ValueError as e:
-                            self.logger.warning(f"Failed to parse issue date: {item.get('date')}, error: {e}")
-                    
-                    llm_summary = None
-                    if llm_enabled and content is not None:
-                        llm_summary = await self.agent_service.chat(content)
-
-                    # Create ComplianceNews object
-                    compliance_news = ComplianceNews(
-                        source="HKMA",
-                        issue_date=issue_date,
-                        title=item.get("title", ""),
-                        content=content,
-                        llm_summary=llm_summary,
-                        content_url=item.get("link"),
-                        creation_user=creation_user
-                    )
-                    
-                    # Persist to database
-                    persisted_item = self.repository.create(compliance_news)
-                    persisted_news.append(persisted_item)
-                    
-                    self.logger.info(f"Successfully persisted press release: {item.get('title')}")
-                    
-                except Exception as e:
-                    self.logger.error(f"Failed to process press release {item.get('title')}: {e}")
-                    # Continue with other items even if one fails
-                    continue
-            
-            self.logger.info(f"Successfully persisted {len(persisted_news)} out of {len(press_releases)} press releases")
-            return persisted_news
+            return await self._process_and_persist_press_releases(
+                press_releases, 
+                creation_user, 
+                llm_enabled, 
+                f"date: {date}"
+            )
             
         except Exception as e:
             self.logger.error(f"Error fetching and persisting press releases for date {date}: {e}")
@@ -130,64 +78,12 @@ class HkmaNewsService:
         try:
             # Fetch press releases from HKMA API
             press_releases = self.client.fetch_press_releases_by_date_range(from_date, to_date)
-            
-            if not press_releases:
-                self.logger.info(f"No press releases found for date range: {from_date} to {to_date}")
-                return []
-            
-            self.logger.info(f"Found {len(press_releases)} press releases for date range: {from_date} to {to_date}")
-            
-            persisted_news = []
-            for item in press_releases:
-                try:
-                    # Fetch content for each press release
-                    content = None
-                    if item.get("link"):
-                        content = self._extract_content_from_hkma_html(self.client.fetch_press_release_content(item["link"]))
-                        if content:
-                            self.logger.debug(f"Fetched content for press release: {item.get('title')}")
-                        else:
-                            self.logger.warning(f"Failed to fetch content for press release: {item.get('title')}")
-                    
-                    # Convert date string to datetime
-                    issue_date = None
-                    if item.get("date"):
-                        try:
-                            issue_date = datetime.strptime(item["date"], "%Y-%m-%d")
-                            # Localize to Hong Kong timezone
-                            hk_tz = get_hk_timezone()
-                            issue_date = issue_date.replace(tzinfo=hk_tz)
-                        except ValueError as e:
-                            self.logger.warning(f"Failed to parse issue date: {item.get('date')}, error: {e}")
-                    
-                    llm_summary = None
-                    if llm_enabled and content is not None:
-                        llm_summary = await self.agent_service.chat(content)
-
-                    # Create ComplianceNews object
-                    compliance_news = ComplianceNews(
-                        source="HKMA",
-                        issue_date=issue_date,
-                        title=item.get("title", ""),
-                        content=content,
-                        llm_summary=llm_summary,
-                        content_url=item.get("link"),
-                        creation_user=creation_user
-                    )
-                    
-                    # Persist to database
-                    persisted_item = self.repository.create(compliance_news)
-                    persisted_news.append(persisted_item)
-                    
-                    self.logger.info(f"Successfully persisted press release: {item.get('title')}")
-                    
-                except Exception as e:
-                    self.logger.error(f"Failed to process press release {item.get('title')}: {e}")
-                    # Continue with other items even if one fails
-                    continue
-            
-            self.logger.info(f"Successfully persisted {len(persisted_news)} out of {len(press_releases)} press releases")
-            return persisted_news
+            return await self._process_and_persist_press_releases(
+                press_releases, 
+                creation_user, 
+                llm_enabled, 
+                f"date range: {from_date} to {to_date}"
+            )
             
         except Exception as e:
             self.logger.error(f"Error fetching and persisting press releases for date range {from_date} to {to_date}: {e}")
@@ -242,6 +138,105 @@ class HkmaNewsService:
         
         self.logger.info(f"Fetching HKMA news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
         return self.get_news_by_date_range(start_date, end_date) 
+    
+    async def _process_and_persist_press_releases(self, press_releases: List[dict], 
+                                                creation_user: str, llm_enabled: bool, 
+                                                context: str) -> List[ComplianceNews]:
+        """Process and persist press releases to database.
+        
+        Args:
+            press_releases: List of press release dictionaries
+            creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
+            context: Context string for logging (e.g., "date: 2024-12-15")
+            
+        Returns:
+            List of persisted ComplianceNews objects
+        """
+        if not press_releases:
+            self.logger.info(f"No press releases found for {context}")
+            return []
+        
+        self.logger.info(f"Found {len(press_releases)} press releases for {context}")
+        
+        persisted_news = []
+        for item in press_releases:
+            try:
+                # Fetch content for each press release
+                content = self._fetch_press_release_content(item)
+                
+                # Parse issue date
+                issue_date = self._parse_issue_date(item.get("date"))
+                
+                # Generate LLM summary if enabled
+                llm_summary = None
+                if llm_enabled and content is not None:
+                    llm_summary = await self.agent_service.chat(content)
+
+                # Create ComplianceNews object
+                compliance_news = ComplianceNews(
+                    source="HKMA",
+                    issue_date=issue_date,
+                    title=item.get("title", ""),
+                    content=content,
+                    llm_summary=llm_summary,
+                    content_url=item.get("link"),
+                    creation_user=creation_user
+                )
+                
+                # Persist to database
+                persisted_item = self.repository.create(compliance_news)
+                persisted_news.append(persisted_item)
+                
+                self.logger.info(f"Successfully persisted press release: {item.get('title')}")
+                
+            except Exception as e:
+                self.logger.error(f"Failed to process press release {item.get('title')}: {e}")
+                # Continue with other items even if one fails
+                continue
+        
+        self.logger.info(f"Successfully persisted {len(persisted_news)} out of {len(press_releases)} press releases")
+        return persisted_news
+    
+    def _fetch_press_release_content(self, item: dict) -> Optional[str]:
+        """Fetch content for a press release item.
+        
+        Args:
+            item: Press release dictionary containing link and title
+            
+        Returns:
+            Extracted content or None if failed
+        """
+        content = None
+        if item.get("link"):
+            raw_content = self.client.fetch_press_release_content(item["link"])
+            content = self._extract_content_from_hkma_html(raw_content)
+            if content:
+                self.logger.debug(f"Fetched content for press release: {item.get('title')}")
+            else:
+                self.logger.warning(f"Failed to fetch content for press release: {item.get('title')}")
+        return content
+    
+    def _parse_issue_date(self, date_str: str) -> Optional[datetime]:
+        """Parse issue date string to datetime object.
+        
+        Args:
+            date_str: Date string in format "yyyy-mm-dd"
+            
+        Returns:
+            Parsed datetime object with HK timezone or None if parsing fails
+        """
+        if not date_str:
+            return None
+            
+        try:
+            issue_date = datetime.strptime(date_str, "%Y-%m-%d")
+            # Localize to Hong Kong timezone
+            hk_tz = get_hk_timezone()
+            return issue_date.replace(tzinfo=hk_tz)
+        except ValueError as e:
+            self.logger.warning(f"Failed to parse issue date: {date_str}, error: {e}")
+            return None
     
     def _extract_content_from_hkma_html(self, html_content: str) -> str:
         """Extract content from HTML.
