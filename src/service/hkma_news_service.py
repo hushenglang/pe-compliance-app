@@ -4,7 +4,7 @@ import logging
 from typing import List
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-
+from bs4 import BeautifulSoup
 from client.hkma_client import HKMAClient
 from model.compliance_news import ComplianceNews
 from repo.compliance_news_repository import ComplianceNewsRepository
@@ -62,7 +62,7 @@ class HkmaNewsService:
                     # Fetch content for each press release
                     content = None
                     if item.get("link"):
-                        content = self.client.fetch_press_release_content(item["link"])
+                        content = self._extract_content_from_hkma_html(self.client.fetch_press_release_content(item["link"]))
                         if content:
                             self.logger.debug(f"Fetched content for press release: {item.get('title')}")
                         else:
@@ -143,7 +143,7 @@ class HkmaNewsService:
                     # Fetch content for each press release
                     content = None
                     if item.get("link"):
-                        content = self.client.fetch_press_release_content(item["link"])
+                        content = self._extract_content_from_hkma_html(self.client.fetch_press_release_content(item["link"]))
                         if content:
                             self.logger.debug(f"Fetched content for press release: {item.get('title')}")
                         else:
@@ -242,3 +242,26 @@ class HkmaNewsService:
         
         self.logger.info(f"Fetching HKMA news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
         return self.get_news_by_date_range(start_date, end_date) 
+    
+    def _extract_content_from_hkma_html(self, html_content: str) -> str:
+        """Extract content from HTML.
+        
+        Args:
+            html_content: HTML content
+            
+        Returns:
+            String containing the content
+        """
+        self.logger.info(f"Extracting content from HTML: {html_content[:100]}")
+        soup = BeautifulSoup(html_content, 'html.parser')
+        # Find the main content div
+        content_div = soup.find('div', class_='content-with-right-content layout-press-release-detail full-content-printer')
+        if content_div:
+            # Find the content wrapper within the main div
+            content_wrapper = content_div.find('div', class_='content-wrapper')
+            if content_wrapper:
+                self.logger.info(f"Found content wrapper: {content_wrapper}")
+                return content_wrapper.get_text()
+    
+        self.logger.info(f"No content wrapper found, returning original HTML: {html_content[:100]}")
+        return html_content
