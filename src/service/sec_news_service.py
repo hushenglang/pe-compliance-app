@@ -152,7 +152,7 @@ class SecNewsService:
         Returns:
             List of ComplianceNews objects
         """
-        return self.repository.get_by_date_range(start_date, end_date)
+        return self.repository.get_by_date_range(start_date, end_date, "SEC")
     
     def get_news_last_7days(self) -> List[ComplianceNews]:
         """Get SEC news from the last 7 days.

@@ -42,18 +42,19 @@ class ComplianceNewsRepository:
             self.logger.error(f"Failed to fetch compliance news by source {source}: {e}")
             raise
 
-    def get_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ComplianceNews]:
-        """Get compliance news within a date range"""
+    def get_by_date_range(self, start_date: datetime, end_date: datetime, source: str) -> List[ComplianceNews]:
+        """Get compliance news within a date range and filtered by source"""
         try:
-            self.logger.debug(f"Fetching compliance news by date range: {start_date} to {end_date}")
+            self.logger.debug(f"Fetching compliance news by date range: {start_date} to {end_date}, source: {source}")
             results = self.db.query(ComplianceNews).filter(
                 ComplianceNews.issue_date >= start_date,
-                ComplianceNews.issue_date <= end_date
+                ComplianceNews.issue_date <= end_date,
+                ComplianceNews.source == source
             ).all()
-            self.logger.info(f"Found {len(results)} compliance news records in date range")
+            self.logger.info(f"Found {len(results)} compliance news records in date range for source: {source}")
             return results
         except Exception as e:
-            self.logger.error(f"Failed to fetch compliance news by date range: {e}")
+            self.logger.error(f"Failed to fetch compliance news by date range for source {source}: {e}")
             raise
 
     def update(self, compliance_news: ComplianceNews) -> Optional[ComplianceNews]:
