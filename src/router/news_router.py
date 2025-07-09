@@ -9,6 +9,7 @@ import markdown2  # type: ignore
 from service.sfc_news_service import SfcNewsService
 from service.hkma_news_service import HkmaNewsService
 from service.sec_news_service import SecNewsService
+from service.hkex_news_service import HkexNewsService
 from config.database import get_db
 from util.logging_util import get_logger
 
@@ -44,13 +45,13 @@ async def fetch_and_persist_today_news(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch and persist today's news from SFC, HKMA, and SEC sources and return all persisted news.
+    Fetch and persist today's news from SFC, HKMA, SEC, and HKEX sources and return all persisted news.
     
     - **llm_enabled**: Whether to enable LLM processing for content summarization
     - **user**: User who initiated the fetch operation
     
     Returns:
-        List of persisted ComplianceNews objects from SFC, HKMA, and SEC sources
+        List of persisted ComplianceNews objects from SFC, HKMA, SEC, and HKEX sources
     """
     logger.info(f"[POST /today] Starting fetch and persist today's news request - llm_enabled: {llm_enabled}, user: {user}")
     
@@ -58,6 +59,7 @@ async def fetch_and_persist_today_news(
     sfc_news_service = SfcNewsService(db)
     hkma_news_service = HkmaNewsService(db)
     sec_news_service = SecNewsService(db)
+    hkex_news_service = HkexNewsService(db)
     
     all_persisted_news = []
     errors = []
@@ -104,6 +106,20 @@ async def fetch_and_persist_today_news(
         logger.error(f"[POST /today] Failed to fetch and persist SEC news: {str(e)}")
         errors.append(f"SEC: {str(e)}")
     
+    try:
+        # Fetch and persist today's HKEX news
+        logger.info("[POST /today] Calling HkexNewsService.fetch_and_persist_today_news")
+        hkex_news = await hkex_news_service.fetch_and_persist_today_news(
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        all_persisted_news.extend(hkex_news)
+        logger.info(f"[POST /today] Successfully fetched and persisted {len(hkex_news)} HKEX news items")
+        
+    except Exception as e:
+        logger.error(f"[POST /today] Failed to fetch and persist HKEX news: {str(e)}")
+        errors.append(f"HKEX: {str(e)}")
+    
     # If all services failed, raise an error
     if errors and not all_persisted_news:
         error_message = "; ".join(errors)
@@ -125,14 +141,14 @@ async def fetch_and_persist_news_by_date(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch and persist news from SFC, HKMA, and SEC sources for a specific date and return all persisted news.
+    Fetch and persist news from SFC, HKMA, SEC, and HKEX sources for a specific date and return all persisted news.
     
     - **date**: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
     - **llm_enabled**: Whether to enable LLM processing for content summarization
     - **user**: User who initiated the fetch operation
     
     Returns:
-        List of persisted ComplianceNews objects from SFC, HKMA, and SEC sources
+        List of persisted ComplianceNews objects from SFC, HKMA, SEC, and HKEX sources
     """
     logger.info(f"[POST /date/{date}] Starting fetch and persist news by date request - date: {date}, llm_enabled: {llm_enabled}, user: {user}")
     
@@ -147,6 +163,7 @@ async def fetch_and_persist_news_by_date(
     sfc_news_service = SfcNewsService(db)
     hkma_news_service = HkmaNewsService(db)
     sec_news_service = SecNewsService(db)
+    hkex_news_service = HkexNewsService(db)
     
     all_persisted_news = []
     errors = []
@@ -196,6 +213,21 @@ async def fetch_and_persist_news_by_date(
         logger.error(f"[POST /date/{date}] Failed to fetch and persist SEC news: {str(e)}")
         errors.append(f"SEC: {str(e)}")
     
+    try:
+        # Fetch and persist HKEX news for the specified date
+        logger.info(f"[POST /date/{date}] Calling HkexNewsService.fetch_and_persist_news_by_date")
+        hkex_news = await hkex_news_service.fetch_and_persist_news_by_date(
+            date=date,
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        all_persisted_news.extend(hkex_news)
+        logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(hkex_news)} HKEX news items")
+        
+    except Exception as e:
+        logger.error(f"[POST /date/{date}] Failed to fetch and persist HKEX news: {str(e)}")
+        errors.append(f"HKEX: {str(e)}")
+    
     # If all services failed, raise an error
     if errors and not all_persisted_news:
         error_message = "; ".join(errors)
@@ -212,7 +244,7 @@ async def fetch_and_persist_news_by_date(
 @router.get("/last7days", response_model=List[ComplianceNewsResponse])
 async def get_last_7days_news(db: Session = Depends(get_db)):
     """
-    Get news from SFC, HKMA, and SEC sources from the last 7 days.
+    Get news from SFC, HKMA, SEC, and HKEX sources from the last 7 days.
     
     Returns:
         List of ComplianceNews objects from the last 7 days from all sources
@@ -222,6 +254,7 @@ async def get_last_7days_news(db: Session = Depends(get_db)):
     sfc_news_service = SfcNewsService(db)
     hkma_news_service = HkmaNewsService(db)
     sec_news_service = SecNewsService(db)
+    hkex_news_service = HkexNewsService(db)
     
     all_news_items = []
     errors = []
@@ -256,6 +289,16 @@ async def get_last_7days_news(db: Session = Depends(get_db)):
         logger.error(f"[GET /last7days] Failed to fetch SEC news: {str(e)}")
         errors.append(f"SEC: {str(e)}")
     
+    try:
+        logger.info("[GET /last7days] Calling HkexNewsService.get_news_last_7days")
+        hkex_news_items = hkex_news_service.get_news_last_7days()
+        all_news_items.extend(hkex_news_items)
+        logger.info(f"[GET /last7days] Successfully retrieved {len(hkex_news_items)} HKEX news items from last 7 days")
+        
+    except Exception as e:
+        logger.error(f"[GET /last7days] Failed to fetch HKEX news: {str(e)}")
+        errors.append(f"HKEX: {str(e)}")
+    
     # If all services failed, raise an error
     if errors and not all_news_items:
         error_message = "; ".join(errors)
@@ -272,7 +315,7 @@ async def get_last_7days_news(db: Session = Depends(get_db)):
 @router.get("/html-email/last7days", response_model=str)
 async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     """
-    Get news from SFC, HKMA, and SEC sources from the last 7 days, convert to html email format.
+    Get news from SFC, HKMA, SEC, and HKEX sources from the last 7 days, convert to html email format.
     
     Returns:
         HTML formatted string for email containing news from all sources
@@ -282,6 +325,7 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     sfc_news_service = SfcNewsService(db)
     hkma_news_service = HkmaNewsService(db)
     sec_news_service = SecNewsService(db)
+    hkex_news_service = HkexNewsService(db)
     
     html_email = ""
     errors = []
@@ -342,6 +386,25 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"[GET /html-email/last7days] Failed to process SEC news: {str(e)}")
         errors.append(f"SEC: {str(e)}")
+    
+    try:
+        logger.info("[GET /html-email/last7days] Calling HkexNewsService.get_news_last_7days")
+        hkex_news_items = hkex_news_service.get_news_last_7days()
+        
+        for hkex_news_item in hkex_news_items:
+            source = hkex_news_item.source
+            issue_date = hkex_news_item.issue_date.strftime("%Y-%m-%d") if hkex_news_item.issue_date else "N/A"
+            title = hkex_news_item.title
+            content_url = str(hkex_news_item.content_url) if hkex_news_item.content_url else ""
+            llm_summary = hkex_news_item.llm_summary
+            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
+            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
+        
+        logger.info(f"[GET /html-email/last7days] Successfully processed {len(hkex_news_items)} HKEX news items")
+        
+    except Exception as e:
+        logger.error(f"[GET /html-email/last7days] Failed to process HKEX news: {str(e)}")
+        errors.append(f"HKEX: {str(e)}")
     
     # If all services failed, raise an error
     if errors and not html_email:
