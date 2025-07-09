@@ -35,7 +35,7 @@ class ComplianceNewsRepository:
             self.logger.debug(f"Fetching compliance news by source: {source}, skip: {skip}, limit: {limit}")
             results = self.db.query(ComplianceNews).filter(
                 ComplianceNews.source == source
-            ).offset(skip).limit(limit).all()
+            ).order_by(ComplianceNews.issue_date.asc(), ComplianceNews.source).offset(skip).limit(limit).all()
             self.logger.info(f"Found {len(results)} compliance news records for source: {source}")
             return results
         except Exception as e:
@@ -50,7 +50,7 @@ class ComplianceNewsRepository:
                 ComplianceNews.issue_date >= start_date,
                 ComplianceNews.issue_date <= end_date,
                 ComplianceNews.source == source
-            ).all()
+            ).order_by(ComplianceNews.issue_date.asc(), ComplianceNews.source).all()
             self.logger.info(f"Found {len(results)} compliance news records in date range for source: {source}")
             return results
         except Exception as e:
