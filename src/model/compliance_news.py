@@ -14,3 +14,4 @@ class ComplianceNews(Base):
     llm_summary = Column(Text, nullable=True)
     creation_date = Column(DateTime, default=func.current_timestamp())
     creation_user = Column(String(100), nullable=False)
+    status = Column(String(20), nullable=False, default='PENDING')

@@ -92,7 +92,8 @@ class SfcNewsService:
                         content=content,
                         llm_summary=llm_summary,
                         content_url=item.get("url"),
-                        creation_user=creation_user
+                        creation_user=creation_user,
+                        status="PENDING"
                     )
                     
                     # Persist to database

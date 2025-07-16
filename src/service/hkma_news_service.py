@@ -181,7 +181,8 @@ class HkmaNewsService:
                     content=content,
                     llm_summary=llm_summary,
                     content_url=item.get("link"),
-                    creation_user=creation_user
+                    creation_user=creation_user,
+                    status="PENDING"
                 )
                 
                 # Persist to database

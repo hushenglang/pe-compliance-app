@@ -70,6 +70,7 @@ class ComplianceNewsRepository:
             db_news.content_url = compliance_news.content_url
             db_news.llm_summary = compliance_news.llm_summary
             db_news.creation_user = compliance_news.creation_user
+            db_news.status = compliance_news.status
             self.db.commit()
             self.db.refresh(db_news)
         return db_news

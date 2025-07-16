@@ -9,3 +9,6 @@ CREATE TABLE compliance_news (
     creation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
     creation_user VARCHAR(100) NOT NULL
 );
+
+ALTER TABLE compliance_news
+ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PENDING';

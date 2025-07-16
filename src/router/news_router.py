@@ -27,6 +27,7 @@ class ComplianceNewsResponse(BaseModel):
     llm_summary: Optional[str] = None
     creation_date: datetime
     creation_user: str
+    status: str
 
     class Config:
         from_attributes = True
