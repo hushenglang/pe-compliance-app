@@ -1,5 +1,5 @@
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from util.logging_util import get_logger
@@ -72,18 +72,20 @@ class HkexNewsClient:
         news_items = []
         
         for row in news_rows:
+            if not isinstance(row, Tag):
+                continue
             try:
                 # Extract date information
                 date_ball = row.find('div', class_='whats_on_tdy_ball')
-                if not date_ball:
+                if not date_ball or not isinstance(date_ball, Tag):
                     continue
                 
                 # Get day number
                 day_element = date_ball.find('div', class_='whats_on_tdy_ball_number')
-                if not day_element:
+                if not day_element or not isinstance(day_element, Tag):
                     continue
                 day_div = day_element.find('div')
-                if not day_div:
+                if not day_div or not isinstance(day_div, Tag):
                     continue
                 day = day_div.get_text(strip=True)
                 
@@ -105,11 +107,11 @@ class HkexNewsClient:
                 
                 # Extract title and URL
                 right_section = row.find('div', class_='whats_on_tdy_right')
-                if not right_section:
+                if not right_section or not isinstance(right_section, Tag):
                     continue
                 
                 text_container = right_section.find('div', class_='whats_on_tdy_text_container')
-                if not text_container:
+                if not text_container or not isinstance(text_container, Tag):
                     continue
                 
                 # Get category (text_1)
@@ -118,15 +120,16 @@ class HkexNewsClient:
                 
                 # Get title and URL (text_2)
                 title_element = text_container.find('div', class_='whats_on_tdy_text_2')
-                if not title_element:
+                if not title_element or not isinstance(title_element, Tag):
                     continue
                 
                 link_element = title_element.find('a')
-                if not link_element:
+                if not link_element or not isinstance(link_element, Tag):
                     continue
                 
                 title = link_element.get_text(strip=True)
-                relative_url = link_element.get('href', '')
+                href_attr = link_element.get('href', '')
+                relative_url = str(href_attr) if href_attr else ''
                 
                 # Convert relative URL to absolute URL
                 if relative_url.startswith('/'):
@@ -175,9 +178,9 @@ class HkexNewsClient:
             # Find the main content area specifically
             main_element = soup.find('main')
             
-            if main_element:
+            if main_element and isinstance(main_element, Tag):
                 # Remove scripts, styles, and other unwanted elements
-                for unwanted in main_element(["script", "style", "nav", "header", "footer"]):
+                for unwanted in main_element.find_all(["script", "style", "nav", "header", "footer"]):
                     unwanted.decompose()
                 
                 # Extract all text content from main tag

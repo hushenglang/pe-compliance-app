@@ -2,7 +2,7 @@
 
 import logging
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 from client.sec_news_client import SECNewsClient
@@ -130,41 +130,7 @@ class SecNewsService:
             self.logger.error(f"Error fetching and persisting latest press releases: {e}")
             raise
     
-    def get_existing_news(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
-        """Get existing SEC news from database.
-        
-        Args:
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            
-        Returns:
-            List of ComplianceNews objects
-        """
-        return self.repository.get_by_source("SEC", skip, limit)
-    
-    def get_news_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ComplianceNews]:
-        """Get existing SEC news from database within date range.
-        
-        Args:
-            start_date: Start datetime
-            end_date: End datetime
-            
-        Returns:
-            List of ComplianceNews objects
-        """
-        return self.repository.get_by_date_range(start_date, end_date, "SEC")
-    
-    def get_news_last_7days(self) -> List[ComplianceNews]:
-        """Get SEC news from the last 7 days.
-            
-        Returns:
-            List of ComplianceNews objects from the last 7 days
-        """
-        end_date = get_current_datetime_hk()
-        start_date = end_date - timedelta(days=7)
-        
-        self.logger.info(f"Fetching SEC news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-        return self.get_news_by_date_range(start_date, end_date)
+
     
     async def _process_and_persist_press_releases(self, press_releases: List[dict], 
                                                 creation_user: str, llm_enabled: bool, 

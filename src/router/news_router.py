@@ -10,6 +10,7 @@ from service.sfc_news_service import SfcNewsService
 from service.hkma_news_service import HkmaNewsService
 from service.sec_news_service import SecNewsService
 from service.hkex_news_service import HkexNewsService
+from service.compliance_news_service import ComplianceNewsService
 from config.database import get_db
 from util.logging_util import get_logger
 
@@ -252,66 +253,17 @@ async def get_last_7days_news(db: Session = Depends(get_db)):
     """
     logger.info("[GET /last7days] Starting request to get last 7 days news")
     
-    sfc_news_service = SfcNewsService(db)
-    hkma_news_service = HkmaNewsService(db)
-    sec_news_service = SecNewsService(db)
-    hkex_news_service = HkexNewsService(db)
-    
-    all_news_items = []
-    errors = []
+    compliance_news_service = ComplianceNewsService(db)
     
     try:
-        logger.info("[GET /last7days] Calling SfcNewsService.get_news_last_7days")
-        sfc_news_items = sfc_news_service.get_news_last_7days()
-        all_news_items.extend(sfc_news_items)
-        logger.info(f"[GET /last7days] Successfully retrieved {len(sfc_news_items)} SFC news items from last 7 days")
+        logger.info("[GET /last7days] Calling ComplianceNewsService.get_news_last_7days")
+        all_news_items = compliance_news_service.get_news_last_7days()
+        logger.info(f"[GET /last7days] Successfully retrieved {len(all_news_items)} total news items from last 7 days")
+        return all_news_items
         
     except Exception as e:
-        logger.error(f"[GET /last7days] Failed to fetch SFC news: {str(e)}")
-        errors.append(f"SFC: {str(e)}")
-    
-    try:
-        logger.info("[GET /last7days] Calling HkmaNewsService.get_news_last_7days")
-        hkma_news_items = hkma_news_service.get_news_last_7days()
-        all_news_items.extend(hkma_news_items)
-        logger.info(f"[GET /last7days] Successfully retrieved {len(hkma_news_items)} HKMA news items from last 7 days")
-        
-    except Exception as e:
-        logger.error(f"[GET /last7days] Failed to fetch HKMA news: {str(e)}")
-        errors.append(f"HKMA: {str(e)}")
-    
-    try:
-        logger.info("[GET /last7days] Calling SecNewsService.get_news_last_7days")
-        sec_news_items = sec_news_service.get_news_last_7days()
-        all_news_items.extend(sec_news_items)
-        logger.info(f"[GET /last7days] Successfully retrieved {len(sec_news_items)} SEC news items from last 7 days")
-        
-    except Exception as e:
-        logger.error(f"[GET /last7days] Failed to fetch SEC news: {str(e)}")
-        errors.append(f"SEC: {str(e)}")
-    
-    try:
-        logger.info("[GET /last7days] Calling HkexNewsService.get_news_last_7days")
-        hkex_news_items = hkex_news_service.get_news_last_7days()
-        all_news_items.extend(hkex_news_items)
-        logger.info(f"[GET /last7days] Successfully retrieved {len(hkex_news_items)} HKEX news items from last 7 days")
-        
-    except Exception as e:
-        logger.error(f"[GET /last7days] Failed to fetch HKEX news: {str(e)}")
-        errors.append(f"HKEX: {str(e)}")
-    
-    # If all services failed, raise an error
-    if errors and not all_news_items:
-        error_message = "; ".join(errors)
-        logger.error(f"[GET /last7days] All services failed: {error_message}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {error_message}")
-    
-    # Log partial failures
-    if errors:
-        logger.warning(f"[GET /last7days] Partial failures occurred: {'; '.join(errors)}")
-    
-    logger.info(f"[GET /last7days] Successfully retrieved {len(all_news_items)} total news items from last 7 days")
-    return all_news_items
+        logger.error(f"[GET /last7days] Failed to fetch news: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
 
 @router.get("/html-email/last7days", response_model=str)
 async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
@@ -323,99 +275,33 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     """
     logger.info("[GET /html-email/last7days] Starting request to get last 7 days news")
     
-    sfc_news_service = SfcNewsService(db)
-    hkma_news_service = HkmaNewsService(db)
-    sec_news_service = SecNewsService(db)
-    hkex_news_service = HkexNewsService(db)
-    
-    html_email = ""
-    errors = []
+    compliance_news_service = ComplianceNewsService(db)
+    sfc_news_service = SfcNewsService(db)  # Still needed for URL conversion
     
     try:
-        logger.info("[GET /html-email/last7days] Calling SfcNewsService.get_news_last_7days")
-        sfc_news_items = sfc_news_service.get_news_last_7days()
+        logger.info("[GET /html-email/last7days] Calling ComplianceNewsService.get_news_last_7days")
+        all_news_items = compliance_news_service.get_news_last_7days()
         
-        for sfc_news_item in sfc_news_items:
-            source = sfc_news_item.source
-            issue_date = sfc_news_item.issue_date.strftime("%Y-%m-%d") if sfc_news_item.issue_date else "N/A"
-            title = sfc_news_item.title
-            content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(sfc_news_item.content_url)) if sfc_news_item.content_url else ""
-            llm_summary = sfc_news_item.llm_summary
+        html_email = ""
+        for news_item in all_news_items:
+            source = news_item.source
+            issue_date = news_item.issue_date.strftime("%Y-%m-%d") if news_item.issue_date else "N/A"
+            title = news_item.title
+            
+            # Handle SFC URL conversion specially
+            if source == "SFC" and news_item.content_url:
+                content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(news_item.content_url))
+            else:
+                content_url = str(news_item.content_url) if news_item.content_url else ""
+            
+            llm_summary = news_item.llm_summary
             html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
             html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
         
-        logger.info(f"[GET /html-email/last7days] Successfully processed {len(sfc_news_items)} SFC news items")
+        logger.info(f"[GET /html-email/last7days] Successfully processed {len(all_news_items)} total news items")
+        logger.info("[GET /html-email/last7days] Successfully generated HTML email")
+        return html_email
         
     except Exception as e:
-        logger.error(f"[GET /html-email/last7days] Failed to process SFC news: {str(e)}")
-        errors.append(f"SFC: {str(e)}")
-    
-    try:
-        logger.info("[GET /html-email/last7days] Calling HkmaNewsService.get_news_last_7days")
-        hkma_news_items = hkma_news_service.get_news_last_7days()
-        
-        for hkma_news_item in hkma_news_items:
-            source = hkma_news_item.source
-            issue_date = hkma_news_item.issue_date.strftime("%Y-%m-%d") if hkma_news_item.issue_date else "N/A"
-            title = hkma_news_item.title
-            content_url = str(hkma_news_item.content_url) if hkma_news_item.content_url else ""
-            llm_summary = hkma_news_item.llm_summary
-            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
-            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
-        
-        logger.info(f"[GET /html-email/last7days] Successfully processed {len(hkma_news_items)} HKMA news items")
-        
-    except Exception as e:
-        logger.error(f"[GET /html-email/last7days] Failed to process HKMA news: {str(e)}")
-        errors.append(f"HKMA: {str(e)}")
-    
-    try:
-        logger.info("[GET /html-email/last7days] Calling SecNewsService.get_news_last_7days")
-        sec_news_items = sec_news_service.get_news_last_7days()
-        
-        for sec_news_item in sec_news_items:
-            source = sec_news_item.source
-            issue_date = sec_news_item.issue_date.strftime("%Y-%m-%d") if sec_news_item.issue_date else "N/A"
-            title = sec_news_item.title
-            content_url = str(sec_news_item.content_url) if sec_news_item.content_url else ""
-            llm_summary = sec_news_item.llm_summary
-            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
-            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
-        
-        logger.info(f"[GET /html-email/last7days] Successfully processed {len(sec_news_items)} SEC news items")
-        
-    except Exception as e:
-        logger.error(f"[GET /html-email/last7days] Failed to process SEC news: {str(e)}")
-        errors.append(f"SEC: {str(e)}")
-    
-    try:
-        logger.info("[GET /html-email/last7days] Calling HkexNewsService.get_news_last_7days")
-        hkex_news_items = hkex_news_service.get_news_last_7days()
-        
-        for hkex_news_item in hkex_news_items:
-            source = hkex_news_item.source
-            issue_date = hkex_news_item.issue_date.strftime("%Y-%m-%d") if hkex_news_item.issue_date else "N/A"
-            title = hkex_news_item.title
-            content_url = str(hkex_news_item.content_url) if hkex_news_item.content_url else ""
-            llm_summary = hkex_news_item.llm_summary
-            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
-            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
-        
-        logger.info(f"[GET /html-email/last7days] Successfully processed {len(hkex_news_items)} HKEX news items")
-        
-    except Exception as e:
-        logger.error(f"[GET /html-email/last7days] Failed to process HKEX news: {str(e)}")
-        errors.append(f"HKEX: {str(e)}")
-    
-    # If all services failed, raise an error
-    if errors and not html_email:
-        error_message = "; ".join(errors)
-        logger.error(f"[GET /html-email/last7days] All services failed: {error_message}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch news: {error_message}")
-    
-    # Log partial failures
-    if errors:
-        logger.warning(f"[GET /html-email/last7days] Partial failures occurred: {'; '.join(errors)}")
-    
-    logger.info("[GET /html-email/last7days] Successfully generated HTML email")
-    return html_email
+        logger.error(f"[GET /html-email/last7days] Failed to process news: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch and process news: {str(e)}")

@@ -2,7 +2,7 @@
 
 import logging
 from typing import List
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
 from urllib.parse import urlparse, parse_qs
 
@@ -129,41 +129,7 @@ class SfcNewsService:
         self.logger.info(f"Fetching today's SFC news for HK date: {today}")
         return await self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
     
-    def get_existing_news(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
-        """Get existing SFC news from database.
-        
-        Args:
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            
-        Returns:
-            List of ComplianceNews objects
-        """
-        return self.repository.get_by_source("SFC", skip, limit)
-    
-    def get_news_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ComplianceNews]:
-        """Get existing SFC news from database within date range.
-        
-        Args:
-            start_date: Start datetime
-            end_date: End datetime
-            
-        Returns:
-            List of ComplianceNews objects
-        """
-        return self.repository.get_by_date_range(start_date, end_date, "SFC")
-    
-    def get_news_last_7days(self) -> List[ComplianceNews]:
-        """Get SFC news from the last 7 days.
-            
-        Returns:
-            List of ComplianceNews objects from the last 7 days
-        """
-        end_date = get_current_datetime_hk()
-        start_date = end_date - timedelta(days=7)
-        
-        self.logger.info(f"Fetching SFC news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-        return self.get_news_by_date_range(start_date, end_date) 
+ 
 
     def convert_api_url_to_news_orignal_url(self, api_url: str) -> str:
         """Convert SFC API URL to gateway URL format.

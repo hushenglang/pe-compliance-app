@@ -2,7 +2,7 @@
 
 import logging
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
 from bs4 import BeautifulSoup, Tag
 from client.hkma_client import HKMAClient
@@ -103,41 +103,7 @@ class HkmaNewsService:
         self.logger.info(f"Fetching today's HKMA press releases for HK date: {today}")
         return await self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
     
-    def get_existing_news(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
-        """Get existing HKMA news from database.
-        
-        Args:
-            skip: Number of records to skip
-            limit: Maximum number of records to return
-            
-        Returns:
-            List of ComplianceNews objects
-        """
-        return self.repository.get_by_source("HKMA", skip, limit)
-    
-    def get_news_by_date_range(self, start_date: datetime, end_date: datetime) -> List[ComplianceNews]:
-        """Get existing HKMA news from database within date range.
-        
-        Args:
-            start_date: Start datetime
-            end_date: End datetime
-            
-        Returns:
-            List of ComplianceNews objects
-        """
-        return self.repository.get_by_date_range(start_date, end_date, "HKMA")
-    
-    def get_news_last_7days(self) -> List[ComplianceNews]:
-        """Get HKMA news from the last 7 days.
-            
-        Returns:
-            List of ComplianceNews objects from the last 7 days
-        """
-        end_date = get_current_datetime_hk()
-        start_date = end_date - timedelta(days=7)
-        
-        self.logger.info(f"Fetching HKMA news for the last 7 days: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-        return self.get_news_by_date_range(start_date, end_date) 
+ 
     
     async def _process_and_persist_press_releases(self, press_releases: List[dict], 
                                                 creation_user: str, llm_enabled: bool, 

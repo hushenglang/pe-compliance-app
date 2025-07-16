@@ -42,19 +42,41 @@ class ComplianceNewsRepository:
             self.logger.error(f"Failed to fetch compliance news by source {source}: {e}")
             raise
 
-    def get_by_date_range(self, start_date: datetime, end_date: datetime, source: str) -> List[ComplianceNews]:
-        """Get compliance news within a date range and filtered by source"""
+    def get_all(self, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
+        """Get all compliance news from all sources"""
         try:
-            self.logger.debug(f"Fetching compliance news by date range: {start_date} to {end_date}, source: {source}")
-            results = self.db.query(ComplianceNews).filter(
-                ComplianceNews.issue_date >= start_date,
-                ComplianceNews.issue_date <= end_date,
-                ComplianceNews.source == source
-            ).order_by(ComplianceNews.issue_date.asc(), ComplianceNews.source).all()
-            self.logger.info(f"Found {len(results)} compliance news records in date range for source: {source}")
+            self.logger.debug(f"Fetching all compliance news, skip: {skip}, limit: {limit}")
+            results = self.db.query(ComplianceNews).order_by(
+                ComplianceNews.issue_date.desc(), 
+                ComplianceNews.source
+            ).offset(skip).limit(limit).all()
+            self.logger.info(f"Found {len(results)} compliance news records from all sources")
             return results
         except Exception as e:
-            self.logger.error(f"Failed to fetch compliance news by date range for source {source}: {e}")
+            self.logger.error(f"Failed to fetch all compliance news: {e}")
+            raise
+
+    def get_by_date_range(self, start_date: datetime, end_date: datetime, source: Optional[str] = None) -> List[ComplianceNews]:
+        """Get compliance news within a date range, optionally filtered by source"""
+        try:
+            if source:
+                self.logger.debug(f"Fetching compliance news by date range: {start_date} to {end_date}, source: {source}")
+                results = self.db.query(ComplianceNews).filter(
+                    ComplianceNews.issue_date >= start_date,
+                    ComplianceNews.issue_date <= end_date,
+                    ComplianceNews.source == source
+                ).order_by(ComplianceNews.issue_date.desc(), ComplianceNews.source).all()
+                self.logger.info(f"Found {len(results)} compliance news records in date range for source: {source}")
+            else:
+                self.logger.debug(f"Fetching compliance news by date range: {start_date} to {end_date}, all sources")
+                results = self.db.query(ComplianceNews).filter(
+                    ComplianceNews.issue_date >= start_date,
+                    ComplianceNews.issue_date <= end_date
+                ).order_by(ComplianceNews.issue_date.desc(), ComplianceNews.source).all()
+                self.logger.info(f"Found {len(results)} compliance news records in date range from all sources")
+            return results
+        except Exception as e:
+            self.logger.error(f"Failed to fetch compliance news by date range: {e}")
             raise
 
     def update(self, compliance_news: ComplianceNews) -> Optional[ComplianceNews]:
