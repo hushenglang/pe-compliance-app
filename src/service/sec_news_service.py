@@ -12,6 +12,7 @@ from service.agent_service import AgentService
 from util.date_util import get_current_datetime_hk, get_hk_timezone
 from util.logging_util import get_logger
 from constant.prompt_constants import FINANCIAL_COMPLIANCE_SYSTEM_PROMPT
+from constant.status_constants import PENDING
 
 
 class SecNewsService:
@@ -175,7 +176,7 @@ class SecNewsService:
                     llm_summary=llm_summary,
                     content_url=item.get("link"),
                     creation_user=creation_user,
-                    status="PENDING"
+                    status=PENDING
                 )
                 
                 # Persist to database

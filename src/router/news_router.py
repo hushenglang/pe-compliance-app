@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import logging
 import markdown2  # type: ignore
@@ -13,25 +12,10 @@ from service.hkex_news_service import HkexNewsService
 from service.compliance_news_service import ComplianceNewsService
 from config.database import get_db
 from util.logging_util import get_logger
+from schemas.response_schemas import ComplianceNewsResponse, ComplianceNewsStatisticsResponse
 
 # Initialize logger
 logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
-
-# Create a Pydantic model for the response
-class ComplianceNewsResponse(BaseModel):
-    id: int
-    source: str
-    issue_date: Optional[datetime] = None
-    title: str
-    content: Optional[str] = None
-    content_url: Optional[str] = None
-    llm_summary: Optional[str] = None
-    creation_date: datetime
-    creation_user: str
-    status: str
-
-    class Config:
-        from_attributes = True
 
 # Create the router
 router = APIRouter(
@@ -305,3 +289,25 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"[GET /html-email/last7days] Failed to process news: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch and process news: {str(e)}")
+
+@router.get("/statistics", response_model=List[ComplianceNewsStatisticsResponse])
+async def get_news_statistics(db: Session = Depends(get_db)):
+    """
+    Get statistics for news by source and status.
+    
+    Returns:
+        List of ComplianceNewsStatisticsResponse objects containing source, status, and record count.
+    """
+    logger.info("[GET /statistics] Starting request to get news statistics")
+    
+    compliance_news_service = ComplianceNewsService(db)
+    
+    try:
+        logger.info("[GET /statistics] Calling ComplianceNewsService.get_statistics_by_source_and_status")
+        statistics = compliance_news_service.get_statistics_by_source_and_status()
+        logger.info(f"[GET /statistics] Successfully retrieved {len(statistics)} statistics records")
+        return statistics
+        
+    except Exception as e:
+        logger.error(f"[GET /statistics] Failed to fetch statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch statistics: {str(e)}")

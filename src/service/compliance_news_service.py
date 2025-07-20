@@ -1,7 +1,7 @@
 """Compliance News Service for consolidated news operations across all sources."""
 
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
@@ -142,4 +142,13 @@ class ComplianceNewsService:
         end_date = get_current_datetime_hk()
         start_date = end_date - timedelta(days=7)
         
-        return self.get_news_by_date_range_grouped_all_sources(start_date, end_date, sources) 
+        return self.get_news_by_date_range_grouped_all_sources(start_date, end_date, sources)
+    
+    def get_statistics_by_source_and_status(self) -> List[Dict[str, Any]]:
+        """Get statistics of compliance news grouped by source and status.
+        
+        Returns:
+            List of dictionaries containing source, status, and record_count
+        """
+        self.logger.info("Fetching compliance news statistics by source and status")
+        return self.repository.get_statistics_by_source_and_status() 

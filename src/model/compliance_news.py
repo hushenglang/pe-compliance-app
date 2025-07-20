@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, func
 from config.database import Base
+from constant.status_constants import PENDING
 
 class ComplianceNews(Base):
     """SQLAlchemy model for compliance_news table"""
@@ -14,4 +15,4 @@ class ComplianceNews(Base):
     llm_summary = Column(Text, nullable=True)
     creation_date = Column(DateTime, default=func.current_timestamp())
     creation_user = Column(String(100), nullable=False)
-    status = Column(String(20), nullable=False, default='PENDING')
+    status = Column(String(20), nullable=False, default=PENDING)

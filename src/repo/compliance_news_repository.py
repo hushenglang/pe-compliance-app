@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from typing import List, Optional, cast
+from typing import List, Optional, cast, Dict, Any
 from datetime import datetime
 from model.compliance_news import ComplianceNews
 from util.logging_util import get_logger
@@ -77,6 +77,44 @@ class ComplianceNewsRepository:
             return results
         except Exception as e:
             self.logger.error(f"Failed to fetch compliance news by date range: {e}")
+            raise
+
+    def get_statistics_by_source_and_status(self) -> List[Dict[str, Any]]:
+        """Get statistics of compliance news grouped by source and status"""
+        try:
+            self.logger.debug("Fetching compliance news statistics by source and status")
+            # Execute the SQL query equivalent to:
+            # SELECT source, status, COUNT(*) as record_count
+            # FROM compliance_news
+            # GROUP BY source, status
+            # ORDER BY source, status;
+            from sqlalchemy import func
+            
+            results = self.db.query(
+                ComplianceNews.source,
+                ComplianceNews.status,
+                func.count().label('record_count')
+            ).group_by(
+                ComplianceNews.source,
+                ComplianceNews.status
+            ).order_by(
+                ComplianceNews.source,
+                ComplianceNews.status
+            ).all()
+            
+            # Convert to list of dictionaries for easier JSON serialization
+            statistics = []
+            for result in results:
+                statistics.append({
+                    'source': result.source,
+                    'status': result.status,
+                    'record_count': result.record_count
+                })
+            
+            self.logger.info(f"Found {len(statistics)} source-status combinations in statistics")
+            return statistics
+        except Exception as e:
+            self.logger.error(f"Failed to fetch compliance news statistics: {e}")
             raise
 
     def update(self, compliance_news: ComplianceNews) -> Optional[ComplianceNews]:
