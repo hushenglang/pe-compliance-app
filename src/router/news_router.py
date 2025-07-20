@@ -12,7 +12,7 @@ from service.hkex_news_service import HkexNewsService
 from service.compliance_news_service import ComplianceNewsService
 from config.database import get_db
 from util.logging_util import get_logger
-from schemas.response_schemas import ComplianceNewsResponse, ComplianceNewsStatisticsResponse
+from schemas.response_schemas import ComplianceNewsResponse, ComplianceNewsStatisticsResponse, GroupedComplianceNewsResponse, ComplianceNewsLightResponse
 
 # Initialize logger
 logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
@@ -311,3 +311,82 @@ async def get_news_statistics(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"[GET /statistics] Failed to fetch statistics: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch statistics: {str(e)}")
+
+
+@router.get("/date-range/grouped", response_model=GroupedComplianceNewsResponse)
+async def get_news_by_date_range_grouped_all_sources(
+    start_date: str,
+    end_date: str,
+    sources: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get news from date range grouped by source.
+    
+    - **start_date**: Start date in format "yyyy-mm-dd" (e.g., "2024-12-15")
+    - **end_date**: End date in format "yyyy-mm-dd" (e.g., "2024-12-22")
+    - **sources**: Optional comma-separated list of sources (e.g., "SFC,SEC,HKEX,HKMA"). If not provided, includes all sources.
+    
+    Returns:
+        GroupedComplianceNewsResponse with news grouped by source
+    """
+    logger.info(f"[GET /date-range/grouped] Starting request - start_date: {start_date}, end_date: {end_date}, sources: {sources}")
+    
+    # Validate date formats
+    try:
+        start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        logger.error(f"[GET /date-range/grouped] Invalid date format")
+        raise HTTPException(status_code=400, detail="Invalid date format. Please use yyyy-mm-dd format (e.g., 2024-12-15)")
+    
+    # Validate date range
+    if start_datetime > end_datetime:
+        logger.error(f"[GET /date-range/grouped] Start date is after end date")
+        raise HTTPException(status_code=400, detail="Start date must be before or equal to end date")
+    
+    # Parse sources parameter
+    sources_list = None
+    if sources:
+        sources_list = [source.strip().upper() for source in sources.split(",")]
+        valid_sources = {"SFC", "SEC", "HKEX", "HKMA"}
+        invalid_sources = set(sources_list) - valid_sources
+        if invalid_sources:
+            logger.error(f"[GET /date-range/grouped] Invalid sources: {invalid_sources}")
+            raise HTTPException(status_code=400, detail=f"Invalid sources: {invalid_sources}. Valid sources are: {valid_sources}")
+    
+    compliance_news_service = ComplianceNewsService(db)
+    
+    try:
+        logger.info("[GET /date-range/grouped] Calling ComplianceNewsService.get_news_by_date_range_grouped_all_sources")
+        grouped_news = compliance_news_service.get_news_by_date_range_grouped_all_sources(
+            start_date=start_datetime,
+            end_date=end_datetime,
+            sources=sources_list
+        )
+        
+        # Convert to lightweight response format (without content field)
+        grouped_light_news = {}
+        for source, news_list in grouped_news.items():
+            grouped_light_news[source] = [
+                ComplianceNewsLightResponse(
+                    id=news.id,
+                    source=news.source,
+                    issue_date=news.issue_date,
+                    title=news.title,
+                    content_url=news.content_url,
+                    llm_summary=news.llm_summary,
+                    creation_date=news.creation_date,
+                    creation_user=news.creation_user,
+                    status=news.status
+                ) for news in news_list
+            ]
+        
+        total_count = sum(len(news_list) for news_list in grouped_news.values())
+        logger.info(f"[GET /date-range/grouped] Successfully retrieved {total_count} total news items grouped by {len(grouped_news)} sources")
+        
+        return GroupedComplianceNewsResponse(grouped_news=grouped_light_news)
+        
+    except Exception as e:
+        logger.error(f"[GET /date-range/grouped] Failed to fetch grouped news: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch grouped news: {str(e)}")
