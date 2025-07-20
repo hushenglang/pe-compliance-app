@@ -161,4 +161,40 @@ class ComplianceNewsService:
             List of dictionaries containing source, status, and record_count
         """
         self.logger.info("Fetching compliance news statistics by source and status")
-        return self.repository.get_statistics_by_source_and_status() 
+        return self.repository.get_statistics_by_source_and_status()
+
+    def update_news_status(self, news_id: int, status: str) -> Optional[ComplianceNews]:
+        """Update the status of a compliance news record by ID.
+        
+        Args:
+            news_id: ID of the news record to update
+            status: New status ("PENDING", "VERIFIED", "DISCARD")
+            
+        Returns:
+            Updated ComplianceNews object if successful, None if not found
+            
+        Raises:
+            ValueError: If status is invalid
+            Exception: If database operation fails
+        """
+        from constant.status_constants import PENDING, VERIFIED, DISCARD
+        
+        # Validate status
+        valid_statuses = {PENDING, VERIFIED, DISCARD}
+        if status.upper() not in valid_statuses:
+            raise ValueError(f"Invalid status: {status}. Valid statuses are: {valid_statuses}")
+        
+        status = status.upper()  # Normalize to uppercase
+        
+        self.logger.info(f"Updating status for news ID: {news_id} to status: {status}")
+        
+        try:
+            updated_news = self.repository.update_status_by_id(news_id, status)
+            if updated_news:
+                self.logger.info(f"Successfully updated status for news ID: {news_id}")
+            else:
+                self.logger.warning(f"News record not found for ID: {news_id}")
+            return updated_news
+        except Exception as e:
+            self.logger.error(f"Failed to update status for news ID {news_id}: {e}")
+            raise 

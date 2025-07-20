@@ -12,7 +12,7 @@ from service.hkex_news_service import HkexNewsService
 from service.compliance_news_service import ComplianceNewsService
 from config.database import get_db
 from util.logging_util import get_logger
-from schemas.response_schemas import ComplianceNewsResponse, ComplianceNewsStatisticsResponse, GroupedComplianceNewsResponse, ComplianceNewsLightResponse
+from schemas.response_schemas import ComplianceNewsResponse, ComplianceNewsStatisticsResponse, GroupedComplianceNewsResponse, ComplianceNewsLightResponse, UpdateStatusRequest, UpdateStatusResponse
 
 # Initialize logger
 logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
@@ -405,3 +405,47 @@ async def get_news_by_date_range_grouped_all_sources(
     except Exception as e:
         logger.error(f"[GET /date-range/grouped] Failed to fetch grouped news: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch grouped news: {str(e)}")
+
+@router.put("/update-status/{news_id}", response_model=UpdateStatusResponse)
+async def update_news_status(
+    news_id: int,
+    update_status_request: UpdateStatusRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Update the status of a specific news item by its ID.
+    
+    - **news_id**: The ID of the news item to update.
+    - **update_status_request**: A JSON object containing the new status.
+    
+    Returns:
+        UpdateStatusResponse indicating the success of the update.
+    """
+    logger.info(f"[PUT /update-status/{news_id}] Starting update news status request - news_id: {news_id}, new_status: {update_status_request.status}")
+    
+    compliance_news_service = ComplianceNewsService(db)
+    
+    try:
+        logger.info(f"[PUT /update-status/{news_id}] Calling ComplianceNewsService.update_news_status")
+        updated_news = compliance_news_service.update_news_status(
+            news_id=news_id,
+            status=update_status_request.status
+        )
+        
+        if updated_news is None:
+            logger.error(f"[PUT /update-status/{news_id}] News record not found")
+            raise HTTPException(status_code=404, detail=f"News record with ID {news_id} not found")
+        
+        logger.info(f"[PUT /update-status/{news_id}] Successfully updated news status to {updated_news.status}")
+        return UpdateStatusResponse(
+            id=updated_news.id,
+            status=updated_news.status,
+            message=f"News with ID {news_id} status updated to {updated_news.status}"
+        )
+        
+    except ValueError as e:
+        logger.error(f"[PUT /update-status/{news_id}] Invalid status value: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[PUT /update-status/{news_id}] Failed to update news status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update news status: {str(e)}")

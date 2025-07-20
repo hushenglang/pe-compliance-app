@@ -141,6 +141,25 @@ class ComplianceNewsRepository:
             self.db.refresh(db_news)
         return db_news
 
+    def update_status_by_id(self, news_id: int, status: str) -> Optional[ComplianceNews]:
+        """Update compliance news status by ID"""
+        try:
+            self.logger.debug(f"Updating status for news ID: {news_id} to status: {status}")
+            db_news = self._get_by_id(news_id)
+            if db_news:
+                db_news.status = status
+                self.db.commit()
+                self.db.refresh(db_news)
+                self.logger.info(f"Successfully updated status for news ID: {news_id} to status: {status}")
+                return db_news
+            else:
+                self.logger.warning(f"News record not found for ID: {news_id}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Failed to update status for news ID {news_id}: {e}")
+            self.db.rollback()
+            raise
+
     def delete(self, compliance_news: ComplianceNews) -> bool:
         """Delete compliance news record"""
         if compliance_news.id is None:

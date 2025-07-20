@@ -51,4 +51,22 @@ class GroupedComplianceNewsResponse(BaseModel):
     grouped_news: Dict[str, List[ComplianceNewsLightResponse]]
 
     class Config:
+        from_attributes = True
+
+
+class UpdateStatusRequest(BaseModel):
+    """Pydantic schema for updating news status request"""
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateStatusResponse(BaseModel):
+    """Pydantic schema for updating news status response"""
+    id: int
+    status: str
+    message: str
+
+    class Config:
         from_attributes = True 
