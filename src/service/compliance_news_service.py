@@ -46,23 +46,28 @@ class ComplianceNewsService:
             self.logger.info(f"Fetching existing news from all sources (skip={skip}, limit={limit})")
             return self.repository.get_all(skip, limit)
     
-    def get_news_by_date_range(self, start_date: datetime, end_date: datetime, source: Optional[str] = None) -> List[ComplianceNews]:
-        """Get existing news from database within date range, optionally filtered by source.
+    def get_news_by_date_range(self, start_date: datetime, end_date: datetime, source: Optional[str] = None, status: Optional[str] = None) -> List[ComplianceNews]:
+        """Get existing news from database within date range, optionally filtered by source and status.
         
         Args:
             start_date: Start datetime
             end_date: End datetime
             source: Optional news source filter ("SFC", "SEC", "HKEX", "HKMA"). If None, returns all sources.
+            status: Optional status filter ("PENDING", "VERIFIED", "DISCARD"). If None, returns all statuses.
             
         Returns:
             List of ComplianceNews objects
         """
+        filter_desc = f"date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
         if source:
-            self.logger.info(f"Fetching {source} news for date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-            return self.repository.get_by_date_range(start_date, end_date, source)
+            filter_desc = f"{source} news for " + filter_desc
         else:
-            self.logger.info(f"Fetching news from all sources for date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-            return self.repository.get_by_date_range(start_date, end_date)
+            filter_desc = "news from all sources for " + filter_desc
+        if status:
+            filter_desc += f" with status: {status}"
+            
+        self.logger.info(f"Fetching {filter_desc}")
+        return self.repository.get_by_date_range(start_date, end_date, source, status)
     
     def get_news_last_7days(self, source: Optional[str] = None) -> List[ComplianceNews]:
         """Get news from the last 7 days, optionally filtered by source.
@@ -102,13 +107,14 @@ class ComplianceNewsService:
         
         return result
     
-    def get_news_by_date_range_grouped_all_sources(self, start_date: datetime, end_date: datetime, sources: Optional[List[str]] = None) -> Dict[str, List[ComplianceNews]]:
+    def get_news_by_date_range_grouped_all_sources(self, start_date: datetime, end_date: datetime, sources: Optional[List[str]] = None, status: Optional[str] = None) -> Dict[str, List[ComplianceNews]]:
         """Get news from date range grouped by source.
         
         Args:
             start_date: Start datetime
             end_date: End datetime
             sources: Optional list of news sources. If None, includes all sources.
+            status: Optional status filter ("PENDING", "VERIFIED", "DISCARD"). If None, returns all statuses.
             
         Returns:
             Dictionary mapping source names to lists of ComplianceNews objects
@@ -116,10 +122,13 @@ class ComplianceNewsService:
         if sources is None:
             sources = ["SFC", "SEC", "HKEX", "HKMA"]
         
-        self.logger.info(f"Fetching news from sources {sources} for date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+        filter_desc = f"sources {sources} for date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+        if status:
+            filter_desc += f" with status: {status}"
+        self.logger.info(f"Fetching news from {filter_desc}")
         
-        # Single query to get all news for the date range from all sources
-        all_news = self.repository.get_by_date_range(start_date, end_date)
+        # Single query to get all news for the date range from all sources with optional status filter
+        all_news = self.repository.get_by_date_range(start_date, end_date, status=status)
         
         # Filter by requested sources and group by source
         result: Dict[str, List[ComplianceNews]] = {source: [] for source in sources}
@@ -130,11 +139,12 @@ class ComplianceNewsService:
         
         return result
     
-    def get_news_last_7days_grouped_all_sources(self, sources: Optional[List[str]] = None) -> Dict[str, List[ComplianceNews]]:
+    def get_news_last_7days_grouped_all_sources(self, sources: Optional[List[str]] = None, status: Optional[str] = None) -> Dict[str, List[ComplianceNews]]:
         """Get news from the last 7 days grouped by source.
         
         Args:
             sources: Optional list of news sources. If None, includes all sources.
+            status: Optional status filter ("PENDING", "VERIFIED", "DISCARD"). If None, returns all statuses.
             
         Returns:
             Dictionary mapping source names to lists of ComplianceNews objects from the last 7 days
@@ -142,7 +152,7 @@ class ComplianceNewsService:
         end_date = get_current_datetime_hk()
         start_date = end_date - timedelta(days=7)
         
-        return self.get_news_by_date_range_grouped_all_sources(start_date, end_date, sources)
+        return self.get_news_by_date_range_grouped_all_sources(start_date, end_date, sources, status)
     
     def get_statistics_by_source_and_status(self) -> List[Dict[str, Any]]:
         """Get statistics of compliance news grouped by source and status.

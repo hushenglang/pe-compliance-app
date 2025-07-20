@@ -318,6 +318,7 @@ async def get_news_by_date_range_grouped_all_sources(
     start_date: str,
     end_date: str,
     sources: Optional[str] = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -326,11 +327,12 @@ async def get_news_by_date_range_grouped_all_sources(
     - **start_date**: Start date in format "yyyy-mm-dd" (e.g., "2024-12-15")
     - **end_date**: End date in format "yyyy-mm-dd" (e.g., "2024-12-22")
     - **sources**: Optional comma-separated list of sources (e.g., "SFC,SEC,HKEX,HKMA"). If not provided, includes all sources.
+    - **status**: Optional status filter ("PENDING", "VERIFIED", "DISCARD"). If not provided, includes all statuses.
     
     Returns:
         GroupedComplianceNewsResponse with news grouped by source
     """
-    logger.info(f"[GET /date-range/grouped] Starting request - start_date: {start_date}, end_date: {end_date}, sources: {sources}")
+    logger.info(f"[GET /date-range/grouped] Starting request - start_date: {start_date}, end_date: {end_date}, sources: {sources}, status: {status}")
     
     # Validate date formats
     try:
@@ -355,6 +357,15 @@ async def get_news_by_date_range_grouped_all_sources(
             logger.error(f"[GET /date-range/grouped] Invalid sources: {invalid_sources}")
             raise HTTPException(status_code=400, detail=f"Invalid sources: {invalid_sources}. Valid sources are: {valid_sources}")
     
+    # Validate status parameter
+    if status:
+        from constant.status_constants import PENDING, VERIFIED, DISCARD
+        valid_statuses = {PENDING, VERIFIED, DISCARD}
+        if status.upper() not in valid_statuses:
+            logger.error(f"[GET /date-range/grouped] Invalid status: {status}")
+            raise HTTPException(status_code=400, detail=f"Invalid status: {status}. Valid statuses are: {valid_statuses}")
+        status = status.upper()  # Normalize to uppercase
+    
     compliance_news_service = ComplianceNewsService(db)
     
     try:
@@ -362,7 +373,8 @@ async def get_news_by_date_range_grouped_all_sources(
         grouped_news = compliance_news_service.get_news_by_date_range_grouped_all_sources(
             start_date=start_datetime,
             end_date=end_datetime,
-            sources=sources_list
+            sources=sources_list,
+            status=status
         )
         
         # Convert to lightweight response format (without content field)
@@ -383,7 +395,10 @@ async def get_news_by_date_range_grouped_all_sources(
             ]
         
         total_count = sum(len(news_list) for news_list in grouped_news.values())
-        logger.info(f"[GET /date-range/grouped] Successfully retrieved {total_count} total news items grouped by {len(grouped_news)} sources")
+        filter_desc = f"{total_count} total news items grouped by {len(grouped_news)} sources"
+        if status:
+            filter_desc += f" with status: {status}"
+        logger.info(f"[GET /date-range/grouped] Successfully retrieved {filter_desc}")
         
         return GroupedComplianceNewsResponse(grouped_news=grouped_light_news)
         
