@@ -160,6 +160,39 @@ class ComplianceNewsRepository:
             self.db.rollback()
             raise
 
+    def update_title_and_summary_by_id(self, news_id: int, title: Optional[str] = None, llm_summary: Optional[str] = None) -> Optional[ComplianceNews]:
+        """Update compliance news title and/or llm_summary by ID"""
+        try:
+            self.logger.debug(f"Updating title and/or llm_summary for news ID: {news_id}")
+            db_news = self._get_by_id(news_id)
+            if db_news:
+                # Update title if provided
+                if title is not None:
+                    db_news.title = title
+                    self.logger.debug(f"Updated title for news ID: {news_id}")
+                
+                # Update llm_summary if provided
+                if llm_summary is not None:
+                    db_news.llm_summary = llm_summary
+                    self.logger.debug(f"Updated llm_summary for news ID: {news_id}")
+                
+                # Only commit if at least one field was provided
+                if title is not None or llm_summary is not None:
+                    self.db.commit()
+                    self.db.refresh(db_news)
+                    self.logger.info(f"Successfully updated title and/or llm_summary for news ID: {news_id}")
+                else:
+                    self.logger.warning(f"No fields provided to update for news ID: {news_id}")
+                
+                return db_news
+            else:
+                self.logger.warning(f"News record not found for ID: {news_id}")
+                return None
+        except Exception as e:
+            self.logger.error(f"Failed to update title and/or llm_summary for news ID {news_id}: {e}")
+            self.db.rollback()
+            raise
+
     def delete(self, compliance_news: ComplianceNews) -> bool:
         """Delete compliance news record"""
         if compliance_news.id is None:

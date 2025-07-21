@@ -12,7 +12,16 @@ from service.hkex_news_service import HkexNewsService
 from service.compliance_news_service import ComplianceNewsService
 from config.database import get_db
 from util.logging_util import get_logger
-from schemas.response_schemas import ComplianceNewsResponse, ComplianceNewsStatisticsResponse, GroupedComplianceNewsResponse, ComplianceNewsLightResponse, UpdateStatusRequest, UpdateStatusResponse
+from schemas.response_schemas import (
+    ComplianceNewsResponse, 
+    ComplianceNewsStatisticsResponse, 
+    GroupedComplianceNewsResponse, 
+    ComplianceNewsLightResponse, 
+    UpdateStatusRequest, 
+    UpdateStatusResponse,
+    UpdateTitleAndSummaryRequest,
+    UpdateTitleAndSummaryResponse
+)
 
 # Initialize logger
 logger = get_logger(__name__, level=logging.INFO, format_style="detailed")
@@ -449,3 +458,49 @@ async def update_news_status(
     except Exception as e:
         logger.error(f"[PUT /update-status/{news_id}] Failed to update news status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update news status: {str(e)}")
+
+@router.put("/update-content/{news_id}", response_model=UpdateTitleAndSummaryResponse)
+async def update_news_title_and_summary(
+    news_id: int,
+    update_request: UpdateTitleAndSummaryRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Update the title and/or llm_summary of a specific news item by its ID.
+    
+    - **news_id**: The ID of the news item to update.
+    - **update_request**: A JSON object containing the new title and/or llm_summary.
+    
+    Returns:
+        UpdateTitleAndSummaryResponse indicating the success of the update.
+    """
+    logger.info(f"[PUT /update-content/{news_id}] Starting update news title and summary request - news_id: {news_id}")
+    
+    compliance_news_service = ComplianceNewsService(db)
+    
+    try:
+        logger.info(f"[PUT /update-content/{news_id}] Calling ComplianceNewsService.update_news_title_and_summary")
+        updated_news = compliance_news_service.update_news_title_and_summary(
+            news_id=news_id,
+            title=update_request.title,
+            llm_summary=update_request.llm_summary
+        )
+        
+        if updated_news is None:
+            logger.error(f"[PUT /update-content/{news_id}] News record not found")
+            raise HTTPException(status_code=404, detail=f"News record with ID {news_id} not found")
+        
+        logger.info(f"[PUT /update-content/{news_id}] Successfully updated news title and/or llm_summary")
+        return UpdateTitleAndSummaryResponse(
+            id=updated_news.id,
+            title=updated_news.title,
+            llm_summary=updated_news.llm_summary,
+            message=f"News with ID {news_id} title and/or summary updated successfully"
+        )
+        
+    except ValueError as e:
+        logger.error(f"[PUT /update-content/{news_id}] Invalid request data: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"[PUT /update-content/{news_id}] Failed to update news title and summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update news title and summary: {str(e)}")

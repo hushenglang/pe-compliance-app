@@ -197,4 +197,40 @@ class ComplianceNewsService:
             return updated_news
         except Exception as e:
             self.logger.error(f"Failed to update status for news ID {news_id}: {e}")
+            raise
+
+    def update_news_title_and_summary(self, news_id: int, title: Optional[str] = None, llm_summary: Optional[str] = None) -> Optional[ComplianceNews]:
+        """Update the title and/or llm_summary of a compliance news record by ID.
+        
+        Args:
+            news_id: ID of the news record to update
+            title: New title (optional)
+            llm_summary: New llm_summary (optional)
+            
+        Returns:
+            Updated ComplianceNews object if successful, None if not found
+            
+        Raises:
+            ValueError: If both title and llm_summary are None or empty
+            Exception: If database operation fails
+        """
+        # Validate that at least one field is provided and not empty
+        if (title is None or title.strip() == "") and (llm_summary is None):
+            raise ValueError("At least one of title or llm_summary must be provided and title cannot be empty")
+        
+        # Normalize title to None if it's an empty string
+        if title is not None and title.strip() == "":
+            title = None
+        
+        self.logger.info(f"Updating title and/or llm_summary for news ID: {news_id}")
+        
+        try:
+            updated_news = self.repository.update_title_and_summary_by_id(news_id, title, llm_summary)
+            if updated_news:
+                self.logger.info(f"Successfully updated title and/or llm_summary for news ID: {news_id}")
+            else:
+                self.logger.warning(f"News record not found for ID: {news_id}")
+            return updated_news
+        except Exception as e:
+            self.logger.error(f"Failed to update title and/or llm_summary for news ID {news_id}: {e}")
             raise 

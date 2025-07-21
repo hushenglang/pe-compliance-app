@@ -69,4 +69,24 @@ class UpdateStatusResponse(BaseModel):
     message: str
 
     class Config:
+        from_attributes = True
+
+
+class UpdateTitleAndSummaryRequest(BaseModel):
+    """Pydantic schema for updating news title and llm_summary request"""
+    title: Optional[str] = None
+    llm_summary: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UpdateTitleAndSummaryResponse(BaseModel):
+    """Pydantic schema for updating news title and llm_summary response"""
+    id: int
+    title: str
+    llm_summary: Optional[str] = None
+    message: str
+
+    class Config:
         from_attributes = True 
