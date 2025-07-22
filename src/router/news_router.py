@@ -495,7 +495,7 @@ async def update_news_title_and_summary(
             id=updated_news.id,
             title=updated_news.title,
             llm_summary=updated_news.llm_summary,
-            message=f"News with ID {news_id} title and/or summary updated successfully"
+            message=f"News with ID {news_id} updated successfully"
         )
         
     except ValueError as e:
