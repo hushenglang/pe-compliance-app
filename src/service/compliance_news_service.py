@@ -46,6 +46,64 @@ class ComplianceNewsService:
             self.logger.info(f"Fetching existing news from all sources (skip={skip}, limit={limit})")
             return self.repository.get_all(skip, limit)
     
+    def get_news_by_id(self, news_id: int) -> Optional[ComplianceNews]:
+        """Get a single compliance news record by ID.
+        
+        Args:
+            news_id: ID of the news record to retrieve
+            
+        Returns:
+            ComplianceNews object if found, None if not found
+            
+        Raises:
+            Exception: If database operation fails
+        """
+        self.logger.info(f"Fetching news record with ID: {news_id}")
+        
+        try:
+            news = self.repository._get_by_id(news_id)
+            if news:
+                self.logger.info(f"Successfully retrieved news record with ID: {news_id}")
+            else:
+                self.logger.warning(f"No news record found with ID: {news_id}")
+            return news
+        except Exception as e:
+            self.logger.error(f"Failed to fetch news record with ID {news_id}: {e}")
+            raise
+
+    def get_news_by_ids(self, news_ids: List[int]) -> List[ComplianceNews]:
+        """Get multiple compliance news records by a list of IDs.
+        
+        Args:
+            news_ids: List of news record IDs to retrieve
+            
+        Returns:
+            List of ComplianceNews objects found (may be fewer than requested if some IDs don't exist)
+            
+        Raises:
+            ValueError: If news_ids list is empty
+            Exception: If database operation fails
+        """
+        if not news_ids:
+            raise ValueError("news_ids list cannot be empty")
+        
+        self.logger.info(f"Fetching news records with IDs: {news_ids}")
+        
+        try:
+            news_list = self.repository.get_by_ids(news_ids)
+            found_count = len(news_list)
+            requested_count = len(news_ids)
+            
+            if found_count == requested_count:
+                self.logger.info(f"Successfully retrieved all {found_count} requested news records")
+            else:
+                self.logger.warning(f"Retrieved {found_count} out of {requested_count} requested news records")
+            
+            return news_list
+        except Exception as e:
+            self.logger.error(f"Failed to fetch news records with IDs {news_ids}: {e}")
+            raise
+    
     def get_news_by_date_range(self, start_date: datetime, end_date: datetime, source: Optional[str] = None, status: Optional[str] = None) -> List[ComplianceNews]:
         """Get existing news from database within date range, optionally filtered by source and status.
         

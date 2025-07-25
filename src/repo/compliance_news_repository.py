@@ -29,6 +29,43 @@ class ComplianceNewsRepository:
         """Get compliance news by ID"""
         return self.db.query(ComplianceNews).filter(ComplianceNews.id == news_id).first()
 
+    def get_by_id(self, news_id: int) -> Optional[ComplianceNews]:
+        """Get compliance news by ID"""
+        try:
+            self.logger.debug(f"Fetching compliance news by ID: {news_id}")
+            result = self.db.query(ComplianceNews).filter(ComplianceNews.id == news_id).first()
+            if result:
+                self.logger.info(f"Found compliance news record with ID: {news_id}")
+            else:
+                self.logger.warning(f"No compliance news record found with ID: {news_id}")
+            return result
+        except Exception as e:
+            self.logger.error(f"Failed to fetch compliance news by ID {news_id}: {e}")
+            raise
+
+    def get_by_ids(self, news_ids: List[int]) -> List[ComplianceNews]:
+        """Get compliance news by list of IDs"""
+        try:
+            self.logger.debug(f"Fetching compliance news by IDs: {news_ids}")
+            results = self.db.query(ComplianceNews).filter(
+                ComplianceNews.id.in_(news_ids)
+            ).order_by(ComplianceNews.issue_date.desc(), ComplianceNews.source).all()
+            
+            found_count = len(results)
+            requested_count = len(news_ids)
+            
+            if found_count == requested_count:
+                self.logger.info(f"Found all {found_count} requested compliance news records")
+            else:
+                found_ids = [news.id for news in results]
+                missing_ids = [id for id in news_ids if id not in found_ids]
+                self.logger.warning(f"Found {found_count} out of {requested_count} compliance news records. Missing IDs: {missing_ids}")
+            
+            return results
+        except Exception as e:
+            self.logger.error(f"Failed to fetch compliance news by IDs {news_ids}: {e}")
+            raise
+
     def get_by_source(self, source: str, skip: int = 0, limit: int = 100) -> List[ComplianceNews]:
         """Get compliance news by source"""
         try:

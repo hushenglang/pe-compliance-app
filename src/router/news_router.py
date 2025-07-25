@@ -299,6 +299,71 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
         logger.error(f"[GET /html-email/last7days] Failed to process news: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch and process news: {str(e)}")
 
+@router.post("/html-email/by-ids", response_model=str)
+async def get_news_html_email(
+    news_id_list: List[int],
+    db: Session = Depends(get_db)
+):
+    """
+    Get news items by their IDs and convert to HTML email format.
+    
+    - **news_id_list**: List of news item IDs to include in the email
+    
+    Returns:
+        HTML formatted string for email containing the specified news items
+    """
+    logger.info(f"[POST /html-email/by-ids] Starting request to get news HTML email - news_ids: {news_id_list}")
+    
+    if not news_id_list:
+        logger.error("[POST /html-email/by-ids] Empty news ID list provided")
+        raise HTTPException(status_code=400, detail="News ID list cannot be empty")
+    
+    compliance_news_service = ComplianceNewsService(db)
+    sfc_news_service = SfcNewsService(db)  # Still needed for URL conversion
+    
+    try:
+        logger.info(f"[POST /html-email/by-ids] Calling ComplianceNewsService.get_news_by_ids for {len(news_id_list)} IDs")
+        news_items = compliance_news_service.get_news_by_ids(news_id_list)
+        
+        if not news_items:
+            logger.warning(f"[POST /html-email/by-ids] No news items found for provided IDs: {news_id_list}")
+            raise HTTPException(status_code=404, detail=f"No news items found for the provided IDs: {news_id_list}")
+        
+        # Check if some IDs were not found
+        found_ids = {item.id for item in news_items}
+        missing_ids = set(news_id_list) - found_ids
+        if missing_ids:
+            logger.warning(f"[POST /html-email/by-ids] Some news items not found: {missing_ids}")
+        
+        html_email = ""
+        for news_item in news_items:
+            source = news_item.source
+            issue_date = news_item.issue_date.strftime("%Y-%m-%d") if news_item.issue_date else "N/A"
+            title = news_item.title
+            
+            # Handle SFC URL conversion specially
+            if source == "SFC" and news_item.content_url:
+                content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(news_item.content_url))
+            else:
+                content_url = str(news_item.content_url) if news_item.content_url else ""
+            
+            llm_summary = news_item.llm_summary
+            html_summary = markdown2.markdown(llm_summary, extras=['tables', 'fenced-code-blocks', 'toc']).replace('\n', '') if llm_summary else ""
+            html_email += f"""<p><h2>{source} - <a href="{content_url}">{title}</a></h2></p><p>{issue_date}</p><p>{html_summary}</p>""" + "<br><br>"
+        
+        logger.info(f"[POST /html-email/by-ids] Successfully processed {len(news_items)} news items")
+        if missing_ids:
+            logger.info(f"[POST /html-email/by-ids] Note: {len(missing_ids)} news items were not found: {missing_ids}")
+        logger.info("[POST /html-email/by-ids] Successfully generated HTML email")
+        return html_email
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"[POST /html-email/by-ids] Failed to process news: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch and process news: {str(e)}")
+
 @router.get("/statistics", response_model=List[ComplianceNewsStatisticsResponse])
 async def get_news_statistics(db: Session = Depends(get_db)):
     """
