@@ -184,7 +184,7 @@ class ComplianceNewsRepository:
             self.logger.debug(f"Updating status for news ID: {news_id} to status: {status}")
             db_news = self._get_by_id(news_id)
             if db_news:
-                db_news.status = status
+                db_news.status = status  # type: ignore
                 self.db.commit()
                 self.db.refresh(db_news)
                 self.logger.info(f"Successfully updated status for news ID: {news_id} to status: {status}")
@@ -205,12 +205,12 @@ class ComplianceNewsRepository:
             if db_news:
                 # Update title if provided
                 if title is not None:
-                    db_news.title = title
+                    db_news.title = title  # type: ignore
                     self.logger.debug(f"Updated title for news ID: {news_id}")
                 
                 # Update llm_summary if provided
                 if llm_summary is not None:
-                    db_news.llm_summary = llm_summary
+                    db_news.llm_summary = llm_summary  # type: ignore
                     self.logger.debug(f"Updated llm_summary for news ID: {news_id}")
                 
                 # Only commit if at least one field was provided

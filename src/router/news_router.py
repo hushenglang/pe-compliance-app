@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 import logging
@@ -330,8 +330,8 @@ async def get_news_html_email(
             raise HTTPException(status_code=404, detail=f"No news items found for the provided IDs: {news_id_list}")
         
         # Check if some IDs were not found
-        found_ids = {item.id for item in news_items}
-        missing_ids = set(news_id_list) - found_ids
+        found_ids = {item.id for item in news_items}  # type: ignore
+        missing_ids = set(news_id_list) - found_ids  # type: ignore
         if missing_ids:
             logger.warning(f"[POST /html-email/by-ids] Some news items not found: {missing_ids}")
         
@@ -413,12 +413,12 @@ async def get_news_by_date_range_grouped_all_sources(
         start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
         end_datetime = datetime.strptime(end_date, "%Y-%m-%d")
     except ValueError:
-        logger.error(f"[GET /date-range/grouped] Invalid date format")
+        logger.error("[GET /date-range/grouped] Invalid date format")
         raise HTTPException(status_code=400, detail="Invalid date format. Please use yyyy-mm-dd format (e.g., 2024-12-15)")
     
     # Validate date range
     if start_datetime > end_datetime:
-        logger.error(f"[GET /date-range/grouped] Start date is after end date")
+        logger.error("[GET /date-range/grouped] Start date is after end date")
         raise HTTPException(status_code=400, detail="Start date must be before or equal to end date")
     
     # Parse sources parameter
@@ -456,15 +456,15 @@ async def get_news_by_date_range_grouped_all_sources(
         for source, news_list in grouped_news.items():
             grouped_light_news[source] = [
                 ComplianceNewsLightResponse(
-                    id=news.id,
-                    source=news.source,
-                    issue_date=news.issue_date,
-                    title=news.title,
-                    content_url=news.content_url,
-                    llm_summary=news.llm_summary,
-                    creation_date=news.creation_date,
-                    creation_user=news.creation_user,
-                    status=news.status
+                    id=news.id,  # type: ignore
+                    source=news.source,  # type: ignore
+                    issue_date=news.issue_date,  # type: ignore
+                    title=news.title,  # type: ignore
+                    content_url=news.content_url,  # type: ignore
+                    llm_summary=news.llm_summary,  # type: ignore
+                    creation_date=news.creation_date,  # type: ignore
+                    creation_user=news.creation_user,  # type: ignore
+                    status=news.status  # type: ignore
                 ) for news in news_list
             ]
         
@@ -512,8 +512,8 @@ async def update_news_status(
         
         logger.info(f"[PUT /update-status/{news_id}] Successfully updated news status to {updated_news.status}")
         return UpdateStatusResponse(
-            id=updated_news.id,
-            status=updated_news.status,
+            id=updated_news.id,  # type: ignore
+            status=updated_news.status,  # type: ignore
             message=f"News with ID {news_id} status updated to {updated_news.status}"
         )
         
@@ -557,9 +557,9 @@ async def update_news_title_and_summary(
         
         logger.info(f"[PUT /update-content/{news_id}] Successfully updated news title and/or llm_summary")
         return UpdateTitleAndSummaryResponse(
-            id=updated_news.id,
-            title=updated_news.title,
-            llm_summary=updated_news.llm_summary,
+            id=updated_news.id,  # type: ignore
+            title=updated_news.title,  # type: ignore
+            llm_summary=updated_news.llm_summary,  # type: ignore
             message=f"News with ID {news_id} updated successfully"
         )
         
