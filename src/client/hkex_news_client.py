@@ -53,6 +53,64 @@ class HkexNewsClient:
             self.logger.error(f"Unexpected error fetching HKEX news: {e}")
             return []
 
+    def _parse_chinese_date(self, full_date_str: str) -> Optional[str]:
+        """Parse dates like '05 八月 2025' or '05 8月 2025' into 'YYYY-MM-DD'."""
+        try:
+            tokens = full_date_str.strip().replace("\u00A0", " ").split()
+            # Expect three tokens: day, month, year
+            if len(tokens) != 3:
+                return None
+            day_token, month_token, year_token = tokens
+
+            # Normalize month token
+            month_num = self._normalize_chinese_month_to_int(month_token)
+            if month_num is None:
+                return None
+
+            day_int = int(day_token)
+            year_int = int(year_token)
+            parsed_date = datetime(year_int, month_num, day_int)
+            return parsed_date.strftime("%Y-%m-%d")
+        except Exception:
+            return None
+
+    def _normalize_chinese_month_to_int(self, month_token: str) -> Optional[int]:
+        """Convert Chinese month token to an integer (1-12).
+
+        Handles tokens like '八月', '8月', '八', '8'.
+        """
+        token = month_token.strip().replace("\u00A0", " ")
+        # Remove the '月' suffix if present
+        if token.endswith("月"):
+            token = token[:-1]
+
+        # 1) Try numeric directly
+        if token.isdigit():
+            value = int(token)
+            return value if 1 <= value <= 12 else None
+
+        # 2) Map Chinese numerals to month number
+        chinese_map = {
+            "一": 1,
+            "二": 2,
+            "三": 3,
+            "四": 4,
+            "五": 5,
+            "六": 6,
+            "七": 7,
+            "八": 8,
+            "九": 9,
+            "十": 10,
+            "十一": 11,
+            "十二": 12,
+        }
+
+        if token in chinese_map:
+            return chinese_map[token]
+
+        # If somehow token is like '零八' or mixed, return None
+        return None
+
     def _parse_news_html(self, html_content: bytes, from_date: str, to_date: str) -> List[Dict[str, Any]]:
         """
         Parse HTML content and extract news items within the specified date range.
@@ -97,11 +155,13 @@ class HkexNewsClient:
                 
                 # Combine to form full date
                 try:
-                    # Parse date like "04 Jul 2025"
+                    # Parse dates like "05 八月 2025"
                     full_date_str = f"{day} {month_year}"
-                    parsed_date = datetime.strptime(full_date_str, "%d %b %Y")
-                    formatted_date = parsed_date.strftime("%Y-%m-%d")
-                except ValueError:
+                    formatted_date = self._parse_chinese_date(full_date_str)
+                    if not formatted_date:
+                        # Skip if date parsing fails
+                        continue
+                except Exception:
                     # Skip if date parsing fails
                     continue
                 
