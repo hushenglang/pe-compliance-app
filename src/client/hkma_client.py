@@ -119,7 +119,7 @@ class HKMAClient:
             return None
     
     def fetch_press_releases_by_date_range(self, from_date: str, to_date: str, 
-                                         lang: str = "en") -> List[Dict[str, Any]]:
+                                         lang: str = "tc") -> List[Dict[str, Any]]:
         """
         Fetch press releases for a specific date range.
         
@@ -141,13 +141,13 @@ class HKMAClient:
         
         return self.fetch_press_releases(from_date=from_date, to_date=to_date, lang=lang)
     
-    def fetch_press_releases_by_single_date(self, date: str, lang: str = "en") -> List[Dict[str, Any]]:
+    def fetch_press_releases_by_single_date(self, date: str, lang: str = "tc") -> List[Dict[str, Any]]:
         """
         Fetch press releases for a single date.
         
         Args:
             date: Date in format "yyyy-mm-dd"
-            lang: Language code ("en" or "tc")
+            lang: Language code ("tc")
         
         Returns:
             List of dictionaries containing title, link, and date
