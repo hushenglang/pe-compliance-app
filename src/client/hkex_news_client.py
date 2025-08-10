@@ -9,7 +9,7 @@ class HkexNewsClient:
     """Client for fetching news data from HKEX regulatory announcements page."""
     
     def __init__(self):
-        self.base_url = "https://www.hkex.com.hk/News/Regulatory-Announcements?sc_lang=en"
+        self.base_url = "https://www.hkex.com.hk/news/regulatory-announcements?sc_lang=zh-hk"
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
