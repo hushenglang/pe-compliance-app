@@ -17,7 +17,7 @@ class HKMAClient:
         self.logger = get_logger(__name__)
     
     def fetch_press_releases(self, from_date: Optional[str] = None, to_date: Optional[str] = None, 
-                           lang: str = "en", offset: int = 0) -> List[Dict[str, Any]]:
+                           lang: str = "tc", offset: int = 0) -> List[Dict[str, Any]]:
         """
         Fetch press release data from HKMA API.
         
