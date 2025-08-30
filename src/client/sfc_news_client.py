@@ -9,7 +9,7 @@ class SfcNewsClient:
     """Client for fetching news data from SFC Hong Kong API."""
     
     def __init__(self):
-        self.base_url = "https://apps.sfc.hk/edistributionWeb/api/news"
+        self.base_url = "https://apps.sfc.hk/edistributionWeb/api"
         self.headers = {
             "Content-Type": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -26,7 +26,7 @@ class SfcNewsClient:
         Returns:
             List of dictionaries containing newsRefNo, issueDate, title, and lang
         """
-        url = f"{self.base_url}/search"
+        url = f"{self.base_url}/news/search"
         
         # Parse date if provided
         year = "all"
@@ -105,7 +105,7 @@ class SfcNewsClient:
             self.logger.error(f"Unexpected error: {e}")
             return []
 
-    def fetch_news_content(self, url: str) -> Optional[str]:
+    def fetch_content(self, url: str) -> Optional[str]:
         """
         Fetch news content from a given URL.
         

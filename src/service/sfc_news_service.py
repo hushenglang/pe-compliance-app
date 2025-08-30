@@ -64,7 +64,7 @@ class SfcNewsService:
                     # Fetch content for each news item
                     content = None
                     if item.get("url"):
-                        content = self.client.fetch_news_content(item["url"])
+                        content = self.client.fetch_content(item["url"])
                         if content:
                             self.logger.debug(f"Fetched content for news: {item.get('newsRefNo')}")
                         else:
