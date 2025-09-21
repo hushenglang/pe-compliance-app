@@ -224,6 +224,100 @@ class SfcNewsService:
         self.logger.info(f"Fetching today's SFC circular for HK date: {today}")
         return await self.fetch_and_persist_circular_by_date(today, creation_user, llm_enabled)
     
+    async def fetch_and_persist_consultation_by_date(self, date: str, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
+        """Fetch SFC consultation for a specific date and persist to database.
+        
+        Args:
+            date: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
+            creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
+            
+        Returns:
+            List of persisted ComplianceNews objects
+        """
+        self.logger.info(f"Fetching SFC consultation for date: {date}")
+        
+        try:
+            # Fetch consultation from SFC API
+            consultation_items = self.client.fetch_consultation(date)
+            
+            if not consultation_items:
+                self.logger.info(f"No consultation found for date: {date}")
+                return []
+            
+            self.logger.info(f"Found {len(consultation_items)} consultation items for date: {date}")
+            
+            persisted_consultation = []
+            for item in consultation_items:
+                try:
+                    # Fetch content for each consultation item
+                    content = None
+                    if item.get("url"):
+                        content = self.client.fetch_content(item["url"])
+                        if content:
+                            self.logger.debug(f"Fetched content for consultation: {item.get('cpRefNo')}")
+                        else:
+                            self.logger.warning(f"Failed to fetch content for consultation: {item.get('cpRefNo')}")
+                    
+                    # Convert issue date string to datetime
+                    issue_date = None
+                    if item.get("cpIssueDate"):
+                        try:
+                            issue_date = datetime.strptime(item["cpIssueDate"], "%Y-%m-%d")
+                            # Localize to Hong Kong timezone
+                            hk_tz = get_hk_timezone()
+                            issue_date = issue_date.replace(tzinfo=hk_tz)
+                        except ValueError as e:
+                            self.logger.warning(f"Failed to parse issue date: {item.get('cpIssueDate')}, error: {e}")
+                    
+                    llm_summary = None
+                    if llm_enabled and content is not None:
+                        llm_summary = await self.agent_service.chat(content)
+
+                    # Create ComplianceNews object (using issue_date field for consultation issue date)
+                    compliance_consultation = ComplianceNews(
+                        source="SFC",
+                        issue_date=issue_date,
+                        title=item.get("cpTitle", ""),
+                        content=content,
+                        llm_summary=llm_summary,
+                        content_url=item.get("url"),
+                        creation_user=creation_user,
+                        status=PENDING
+                    )
+                    
+                    # Persist to database
+                    persisted_item = self.repository.create(compliance_consultation)
+                    persisted_consultation.append(persisted_item)
+                    
+                    self.logger.info(f"Successfully persisted consultation: {item.get('cpRefNo')} - {item.get('cpTitle')}")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to process consultation item {item.get('cpRefNo')}: {e}")
+                    # Continue with other items even if one fails
+                    continue
+            
+            self.logger.info(f"Successfully persisted {len(persisted_consultation)} out of {len(consultation_items)} consultation items")
+            return persisted_consultation
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching and persisting consultation for date {date}: {e}")
+            raise
+    
+    async def fetch_and_persist_today_consultation(self, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
+        """Fetch SFC consultation for today (Hong Kong timezone) and persist to database.
+        
+        Args:
+            creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
+            
+        Returns:
+            List of persisted ComplianceNews objects
+        """
+        today = get_current_datetime_hk().strftime("%Y-%m-%d")
+        self.logger.info(f"Fetching today's SFC consultation for HK date: {today}")
+        return await self.fetch_and_persist_consultation_by_date(today, creation_user, llm_enabled)
+    
  
 
     def convert_api_url_to_news_orignal_url(self, api_url: str) -> str:
