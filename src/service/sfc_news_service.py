@@ -130,6 +130,100 @@ class SfcNewsService:
         self.logger.info(f"Fetching today's SFC news for HK date: {today}")
         return await self.fetch_and_persist_news_by_date(today, creation_user, llm_enabled)
     
+    async def fetch_and_persist_circular_by_date(self, date: str, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
+        """Fetch SFC circular for a specific date and persist to database.
+        
+        Args:
+            date: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
+            creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
+            
+        Returns:
+            List of persisted ComplianceNews objects
+        """
+        self.logger.info(f"Fetching SFC circular for date: {date}")
+        
+        try:
+            # Fetch circular from SFC API
+            circular_items = self.client.fetch_circular(date)
+            
+            if not circular_items:
+                self.logger.info(f"No circular found for date: {date}")
+                return []
+            
+            self.logger.info(f"Found {len(circular_items)} circular items for date: {date}")
+            
+            persisted_circular = []
+            for item in circular_items:
+                try:
+                    # Fetch content for each circular item
+                    content = None
+                    if item.get("url"):
+                        content = self.client.fetch_content(item["url"])
+                        if content:
+                            self.logger.debug(f"Fetched content for circular: {item.get('refNo')}")
+                        else:
+                            self.logger.warning(f"Failed to fetch content for circular: {item.get('refNo')}")
+                    
+                    # Convert release date string to datetime
+                    release_date = None
+                    if item.get("releasedDate"):
+                        try:
+                            release_date = datetime.strptime(item["releasedDate"], "%Y-%m-%d")
+                            # Localize to Hong Kong timezone
+                            hk_tz = get_hk_timezone()
+                            release_date = release_date.replace(tzinfo=hk_tz)
+                        except ValueError as e:
+                            self.logger.warning(f"Failed to parse release date: {item.get('releasedDate')}, error: {e}")
+                    
+                    llm_summary = None
+                    if llm_enabled and content is not None:
+                        llm_summary = await self.agent_service.chat(content)
+
+                    # Create ComplianceNews object (using issue_date field for release_date)
+                    compliance_circular = ComplianceNews(
+                        source="SFC",
+                        issue_date=release_date,
+                        title=item.get("title", ""),
+                        content=content,
+                        llm_summary=llm_summary,
+                        content_url=item.get("url"),
+                        creation_user=creation_user,
+                        status=PENDING
+                    )
+                    
+                    # Persist to database
+                    persisted_item = self.repository.create(compliance_circular)
+                    persisted_circular.append(persisted_item)
+                    
+                    self.logger.info(f"Successfully persisted circular: {item.get('refNo')} - {item.get('title')}")
+                    
+                except Exception as e:
+                    self.logger.error(f"Failed to process circular item {item.get('refNo')}: {e}")
+                    # Continue with other items even if one fails
+                    continue
+            
+            self.logger.info(f"Successfully persisted {len(persisted_circular)} out of {len(circular_items)} circular items")
+            return persisted_circular
+            
+        except Exception as e:
+            self.logger.error(f"Error fetching and persisting circular for date {date}: {e}")
+            raise
+    
+    async def fetch_and_persist_today_circular(self, creation_user: str = "system", llm_enabled: bool = True) -> List[ComplianceNews]:
+        """Fetch SFC circular for today (Hong Kong timezone) and persist to database.
+        
+        Args:
+            creation_user: User who initiated the fetch operation
+            llm_enabled: Whether to enable LLM processing for content summarization
+            
+        Returns:
+            List of persisted ComplianceNews objects
+        """
+        today = get_current_datetime_hk().strftime("%Y-%m-%d")
+        self.logger.info(f"Fetching today's SFC circular for HK date: {today}")
+        return await self.fetch_and_persist_circular_by_date(today, creation_user, llm_enabled)
+    
  
 
     def convert_api_url_to_news_orignal_url(self, api_url: str) -> str:

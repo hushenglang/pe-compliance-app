@@ -40,13 +40,13 @@ async def fetch_and_persist_today_news(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch and persist today's news from SFC, HKMA, SEC, and HKEX sources and return all persisted news.
+    Fetch and persist today's news and circular from SFC, HKMA, SEC, and HKEX sources and return all persisted news.
     
     - **llm_enabled**: Whether to enable LLM processing for content summarization
     - **user**: User who initiated the fetch operation
     
     Returns:
-        List of persisted ComplianceNews objects from SFC, HKMA, SEC, and HKEX sources
+        List of persisted ComplianceNews objects from SFC (news + circular), HKMA, SEC, and HKEX sources
     """
     logger.info(f"[POST /today] Starting fetch and persist today's news request - llm_enabled: {llm_enabled}, user: {user}")
     
@@ -69,8 +69,17 @@ async def fetch_and_persist_today_news(
         all_persisted_news.extend(sfc_news)
         logger.info(f"[POST /today] Successfully fetched and persisted {len(sfc_news)} SFC news items")
         
+        # Fetch and persist today's SFC circular
+        logger.info("[POST /today] Calling SfcNewsService.fetch_and_persist_today_circular")
+        sfc_circular = await sfc_news_service.fetch_and_persist_today_circular(
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        all_persisted_news.extend(sfc_circular)
+        logger.info(f"[POST /today] Successfully fetched and persisted {len(sfc_circular)} SFC circular items")
+        
     except Exception as e:
-        logger.error(f"[POST /today] Failed to fetch and persist SFC news: {str(e)}")
+        logger.error(f"[POST /today] Failed to fetch and persist SFC news/circular: {str(e)}")
         errors.append(f"SFC: {str(e)}")
     
     try:
@@ -136,14 +145,14 @@ async def fetch_and_persist_news_by_date(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch and persist news from SFC, HKMA, SEC, and HKEX sources for a specific date and return all persisted news.
+    Fetch and persist news and circular from SFC, HKMA, SEC, and HKEX sources for a specific date and return all persisted news.
     
     - **date**: Date in format "yyyy-mm-dd" (e.g., "2024-12-15")
     - **llm_enabled**: Whether to enable LLM processing for content summarization
     - **user**: User who initiated the fetch operation
     
     Returns:
-        List of persisted ComplianceNews objects from SFC, HKMA, SEC, and HKEX sources
+        List of persisted ComplianceNews objects from SFC (news + circular), HKMA, SEC, and HKEX sources
     """
     logger.info(f"[POST /date/{date}] Starting fetch and persist news by date request - date: {date}, llm_enabled: {llm_enabled}, user: {user}")
     
@@ -174,8 +183,18 @@ async def fetch_and_persist_news_by_date(
         all_persisted_news.extend(sfc_news)
         logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(sfc_news)} SFC news items")
         
+        # Fetch and persist SFC circular for the specified date
+        logger.info(f"[POST /date/{date}] Calling SfcNewsService.fetch_and_persist_circular_by_date")
+        sfc_circular = await sfc_news_service.fetch_and_persist_circular_by_date(
+            date=date,
+            creation_user=user,
+            llm_enabled=llm_enabled
+        )
+        all_persisted_news.extend(sfc_circular)
+        logger.info(f"[POST /date/{date}] Successfully fetched and persisted {len(sfc_circular)} SFC circular items")
+        
     except Exception as e:
-        logger.error(f"[POST /date/{date}] Failed to fetch and persist SFC news: {str(e)}")
+        logger.error(f"[POST /date/{date}] Failed to fetch and persist SFC news/circular: {str(e)}")
         errors.append(f"SFC: {str(e)}")
     
     try:
