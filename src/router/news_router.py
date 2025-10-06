@@ -319,9 +319,13 @@ async def get_last_7days_news_html_email(db: Session = Depends(get_db)):
             issue_date = news_item.issue_date.strftime("%Y-%m-%d") if news_item.issue_date else "N/A"
             title = news_item.title
             
-            # Handle SFC URL conversion specially
+            # Handle SFC URL conversion specially with safe fallback
             if source == "SFC" and news_item.content_url:
-                content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(news_item.content_url))
+                try:
+                    content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(news_item.content_url))
+                except Exception as e:
+                    logger.warning(f"[GET /html-email/last7days] URL convert failed for '{news_item.content_url}': {e}. Falling back to original URL.")
+                    content_url = str(news_item.content_url)
             else:
                 content_url = str(news_item.content_url) if news_item.content_url else ""
             
@@ -379,9 +383,13 @@ async def get_news_html_email(
             issue_date = news_item.issue_date.strftime("%Y-%m-%d") if news_item.issue_date else "N/A"
             title = news_item.title
             
-            # Handle SFC URL conversion specially
+            # Handle SFC URL conversion specially with safe fallback
             if source == "SFC" and news_item.content_url:
-                content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(news_item.content_url))
+                try:
+                    content_url = sfc_news_service.convert_api_url_to_news_orignal_url(str(news_item.content_url))
+                except Exception as e:
+                    logger.warning(f"[POST /html-email/by-ids] URL convert failed for '{news_item.content_url}': {e}. Falling back to original URL.")
+                    content_url = str(news_item.content_url)
             else:
                 content_url = str(news_item.content_url) if news_item.content_url else ""
             

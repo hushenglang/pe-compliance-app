@@ -322,10 +322,12 @@ class SfcNewsService:
 
     def convert_api_url_to_news_orignal_url(self, api_url: str) -> str:
         """Convert SFC API URL to gateway URL format.
-        Converts from:
-        https://apps.sfc.hk/edistributionWeb/api/news/content?refNo=25PR99&lang=TC
-        To:
-        https://apps.sfc.hk/edistributionWeb/gateway/TC/news-and-announcements/news/doc?refNo=25PR99
+        Supports multiple API entrypoints and normalizes alternate CDN prefixes.
+        Examples:
+        - From: https://apps.sfc.hk/edistributionWeb/api/news/content?refNo=25PR99&lang=TC
+          To:   https://apps.sfc.hk/edistributionWeb/gateway/TC/news-and-announcements/news/doc?refNo=25PR99
+        - From: https://sc.sfc.hk/TuniS/apps.sfc.hk/edistributionWeb/api/circular/content?refNo=25EC48&lang=TC
+          To:   https://apps.sfc.hk/edistributionWeb/gateway/TC/circulars/doc?refNo=25EC48
         Args:
             api_url: The original API URL
         Returns:
@@ -336,12 +338,13 @@ class SfcNewsService:
         try:
             parsed_url = urlparse(api_url)
             
-            # Validate base URL
-            expected_base = "https://apps.sfc.hk/edistributionWeb"
-            actual_base = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path.split('/api')[0]}"
+            # Determine and validate base path (allow CDN-prefixed TuniS path)
+            path_before_api = parsed_url.path.split('/api')[0]
+            if not path_before_api.endswith('/edistributionWeb'):
+                raise ValueError("Invalid base URL path. Expected path to end with /edistributionWeb")
             
-            if actual_base != expected_base:
-                raise ValueError(f"Invalid base URL. Expected: {expected_base}, Got: {actual_base}")
+            # Normalize to canonical base
+            canonical_base = "https://apps.sfc.hk/edistributionWeb"
             
             # Extract query parameters
             query_params = parse_qs(parsed_url.query)
@@ -356,8 +359,24 @@ class SfcNewsService:
             lang_list = query_params.get('lang')
             lang = lang_list[0] if lang_list else 'TC'
             
+            # Identify API type from the path after /api/
+            remainder_after_api = parsed_url.path.split('/api/', 1)[1] if '/api/' in parsed_url.path else ''
+            api_type = remainder_after_api.split('/', 1)[0] if remainder_after_api else ''
+            
+            # Map API type to gateway path
+            # Only map known types; otherwise, return original URL to avoid breaking
+            if api_type == 'news':
+                gateway_path = 'news-and-announcements/news'
+            elif api_type == 'circular':
+                gateway_path = 'circulars'
+            else:
+                # For unknown types (e.g., consultation), fall back to original URL
+                self.logger.warning(
+                    f"[URL-CONVERT] Unhandled API type '{api_type}' in URL: {api_url}. Returning original URL.")
+                return api_url
+            
             # Construct the new gateway URL
-            gateway_url = f"{expected_base}/gateway/{lang}/news-and-announcements/news/doc?refNo={ref_no}"
+            gateway_url = f"{canonical_base}/gateway/{lang}/{gateway_path}/doc?refNo={ref_no}"
             
             self.logger.debug(f"Converted API URL to gateway URL: {api_url} -> {gateway_url}")
             return gateway_url
